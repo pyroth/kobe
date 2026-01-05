@@ -1,0 +1,14 @@
+[package]
+name = "kobe"
+version = "0.0.1"
+edition = "2024"
+description = "A Rust library for generating cryptocurrency wallets."
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/kobe"
+repository = "https://github.com/pyroth/kobe"
+homepage = "https://github.com/pyroth/kobe"
+keywords = ["blockchain", "ethereum", "web3", "crypto"]
+categories = ["cryptography::cryptocurrencies", "network-programming"]
+
+
+[dependencies]

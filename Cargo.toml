@@ -1,20 +1,13 @@
 [workspace]
-members = ["merkrs", "merkrs-py", "merkrs-wasm"]
+members = ["kobe"]
 # Only check / build main crates by default (check all with `--workspace`)
-default-members = ["merkrs"]
+default-members = ["kobe"]
 
 resolver = "3"
 
 [workspace.dependencies]
-merkrs = { path = "./merkrs"}
+kobe = { path = "./kobe" }
 
-alloy-primitives = "1.5.2"
-alloy-sol-types = "1.5.2"
-hex = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-sha3 = "0.10"
-thiserror = "2.0.17"
 
 [profile.release]
 lto = true           # Enable Link Time Optimization to remove unused code
