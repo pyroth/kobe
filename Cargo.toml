@@ -1,5 +1,5 @@
 [workspace]
-members = ["kobe"]
+members = ["kobe", "kobe-btc", "kobe-eth", "kobe-xmr"]
 # Only check / build main crates by default (check all with `--workspace`)
 default-members = ["kobe"]
 
@@ -7,6 +7,9 @@ resolver = "3"
 
 [workspace.dependencies]
 kobe = { path = "./kobe" }
+kobe_btc = { path = "./kobe-btc" }
+kobe_eth = { path = "./kobe-eth" }
+kobe_xmr = { path = "./kobe-xmr" }
 
 
 [profile.release]
