@@ -129,8 +129,8 @@ impl ExtendedPublicKey {
         let child_affine = child_point.to_affine();
 
         let child_encoded = child_affine.to_encoded_point(true);
-        let child_public_key = PublicKey::from_bytes(child_encoded.as_bytes())
-            .map_err(|_| Error::InvalidPublicKey)?;
+        let child_public_key =
+            PublicKey::from_bytes(child_encoded.as_bytes()).map_err(|_| Error::InvalidPublicKey)?;
 
         let parent_hash = kobe::hash::hash160(&parent_bytes);
         let mut parent_fingerprint = [0u8; 4];
@@ -240,8 +240,7 @@ mod tests {
 
         // Compare with derivation from xprv
         let xprv_grandchild = xprv_child.derive_child(0).unwrap();
-        let xpub_from_prv =
-            ExtendedPublicKey::from_extended_private_key_internal(&xprv_grandchild);
+        let xpub_from_prv = ExtendedPublicKey::from_extended_private_key_internal(&xprv_grandchild);
 
         // Public keys should match
         assert_eq!(

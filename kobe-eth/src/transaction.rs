@@ -121,13 +121,7 @@ impl Transaction {
 
     /// Create a simple ETH transfer transaction (legacy API with raw chain_id).
     #[deprecated(since = "0.2.0", note = "Use transfer_on() with Network type instead")]
-    pub fn transfer(
-        to: Address,
-        value: u128,
-        nonce: u64,
-        gas_price: u128,
-        chain_id: u64,
-    ) -> Self {
+    pub fn transfer(to: Address, value: u128, nonce: u64, gas_price: u128, chain_id: u64) -> Self {
         Self {
             nonce,
             gas_price,

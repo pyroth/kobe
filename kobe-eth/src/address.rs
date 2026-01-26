@@ -77,7 +77,6 @@ fn to_hex_lower(bytes: &[u8]) -> String {
     result
 }
 
-
 impl core::fmt::Display for Address {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[cfg(feature = "alloc")]
