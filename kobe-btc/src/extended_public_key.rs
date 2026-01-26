@@ -70,7 +70,7 @@ impl kobe::ExtendedPublicKey for ExtendedPublicKey {
 
     #[cfg(feature = "alloc")]
     fn derive_path(&self, path: &str) -> Result<Self> {
-        self.derive_path_str(path)
+        self.derive(path)
     }
 
     fn public_key(&self) -> Self::PublicKey {
@@ -95,15 +95,16 @@ impl kobe::ExtendedPublicKey for ExtendedPublicKey {
 }
 
 impl ExtendedPublicKey {
-    /// Create from an extended private key with network.
+    /// Creates an extended public key from an extended private key with network.
     pub fn from_extended_private_key_with_network(
         xprv: &ExtendedPrivateKey,
         network: Network,
     ) -> Self {
+        use kobe::ExtendedPrivateKey as _;
         Self {
             public_key: xprv.public_key(),
-            chain_code: *xprv.chain_code_ref(),
-            depth: xprv.depth_value(),
+            chain_code: xprv.chain_code(),
+            depth: xprv.depth(),
             parent_fingerprint: *xprv.parent_fingerprint(),
             child_index: xprv.child_index().to_u32(),
             network,
@@ -165,11 +166,11 @@ impl ExtendedPublicKey {
         })
     }
 
-    /// Derive from a path string (e.g., "m/0/1/2" or "M/0/1/2").
+    /// Derives a child key from a path string (e.g., "m/0/1/2").
     ///
-    /// Only supports non-hardened paths.
+    /// Only supports non-hardened paths. Hardened derivation requires private key.
     #[cfg(feature = "alloc")]
-    pub fn derive_path_str(&self, path: &str) -> Result<Self> {
+    pub fn derive(&self, path: &str) -> Result<Self> {
         let path = path.trim();
 
         // Handle paths starting with "m/" or "M/"
@@ -206,16 +207,6 @@ impl ExtendedPublicKey {
     /// Get the network.
     pub const fn network(&self) -> Network {
         self.network
-    }
-
-    /// Get a reference to the public key.
-    pub fn public_key_ref(&self) -> &PublicKey {
-        &self.public_key
-    }
-
-    /// Get a reference to the chain code.
-    pub fn chain_code_ref(&self) -> &[u8; 32] {
-        &self.chain_code
     }
 
     /// Serialize to xpub format (Base58Check encoded).
@@ -401,11 +392,11 @@ mod tests {
             ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // Non-hardened path should work
-        let derived = xpub.derive_path_str("m/0/1/2").unwrap();
+        let derived = xpub.derive("m/0/1/2").unwrap();
         assert_eq!(derived.depth(), 3);
 
         // Hardened path should fail
-        let result = xpub.derive_path_str("m/0'/1/2");
+        let result = xpub.derive("m/0'/1/2");
         assert!(result.is_err());
     }
 

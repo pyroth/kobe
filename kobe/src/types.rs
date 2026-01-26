@@ -72,11 +72,11 @@ impl<const N: usize> PartialEq for SecretBytes<N> {
 
 impl<const N: usize> Eq for SecretBytes<N> {}
 
-/// Type alias for 32-byte secret (private key, seed, etc.)
-pub type Secret32 = SecretBytes<32>;
+/// Type alias for 32-byte secret key.
+pub type SecretKey = SecretBytes<32>;
 
-/// Type alias for 64-byte secret (seed)
-pub type Secret64 = SecretBytes<64>;
+/// Type alias for 64-byte seed (from BIP-39 mnemonic).
+pub type Seed = SecretBytes<64>;
 
 /// A fixed-size byte array with display formatting.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -167,14 +167,14 @@ impl<const N: usize> core::fmt::Display for Bytes<N> {
     }
 }
 
-/// Type alias for 20-byte address (Ethereum)
+/// Type alias for 20-byte Ethereum-style address.
 pub type Address20 = Bytes<20>;
 
-/// Type alias for 32-byte hash
-pub type Hash32 = Bytes<32>;
+/// Type alias for 32-byte hash (SHA-256, Keccak-256, etc.).
+pub type Hash256 = Bytes<32>;
 
-/// Type alias for 33-byte compressed public key
-pub type CompressedPubKey = Bytes<33>;
+/// Type alias for 33-byte SEC1 compressed public key.
+pub type CompressedPublicKey = Bytes<33>;
 
-/// Type alias for 65-byte uncompressed public key
-pub type UncompressedPubKey = Bytes<65>;
+/// Type alias for 65-byte SEC1 uncompressed public key.
+pub type UncompressedPublicKey = Bytes<65>;

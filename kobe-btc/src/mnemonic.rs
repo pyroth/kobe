@@ -96,7 +96,7 @@ impl Mnemonic {
     ///
     /// Verifies checksum and extracts the underlying entropy.
     #[cfg(feature = "alloc")]
-    pub fn from_phrase_str(phrase: &str) -> Result<Self> {
+    pub fn parse(phrase: &str) -> Result<Self> {
         let words: Vec<&str> = phrase.split_whitespace().collect();
 
         let expected_bits = match words.len() {
@@ -148,9 +148,9 @@ impl Mnemonic {
         Ok(Self { entropy })
     }
 
-    /// Convert mnemonic to phrase string.
+    /// Returns the mnemonic as a space-separated phrase string.
     #[cfg(feature = "alloc")]
-    pub fn to_phrase_string(&self) -> String {
+    pub fn phrase(&self) -> String {
         // Compute checksum
         let hash = Sha256::digest(&self.entropy);
         let checksum_bits = self.entropy.len() / 4; // CS = ENT / 32 bits
@@ -189,10 +189,10 @@ impl Mnemonic {
         words.join(" ")
     }
 
-    /// Derive seed from mnemonic with optional passphrase.
+    /// Derives a 64-byte seed from the mnemonic with optional passphrase.
     #[cfg(feature = "alloc")]
-    pub fn to_seed_bytes(&self, passphrase: &str) -> [u8; 64] {
-        let phrase = self.to_phrase_string();
+    pub fn seed(&self, passphrase: &str) -> [u8; 64] {
+        let phrase = self.phrase();
         let salt = format!("mnemonic{}", passphrase);
 
         let mut seed = [0u8; 64];
@@ -208,7 +208,7 @@ impl Mnemonic {
         passphrase: &str,
         network: Network,
     ) -> Result<ExtendedPrivateKey> {
-        let seed = self.to_seed_bytes(passphrase);
+        let seed = self.seed(passphrase);
         ExtendedPrivateKey::from_seed_with_network(&seed, network)
     }
 
@@ -248,15 +248,15 @@ impl kobe::Mnemonic for Mnemonic {
     }
 
     fn from_phrase(phrase: &str) -> Result<Self> {
-        Self::from_phrase_str(phrase)
+        Self::parse(phrase)
     }
 
     fn to_phrase(&self) -> String {
-        self.to_phrase_string()
+        self.phrase()
     }
 
     fn to_seed(&self, passphrase: &str) -> [u8; 64] {
-        self.to_seed_bytes(passphrase)
+        self.seed(passphrase)
     }
 
     fn entropy(&self) -> &[u8] {
@@ -275,7 +275,7 @@ mod tests {
         // Test vector from BIP-39
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
         let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
-        let phrase = mnemonic.to_phrase_string();
+        let phrase = mnemonic.phrase();
         assert_eq!(
             phrase,
             "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn test_mnemonic_from_phrase() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
         assert_eq!(
             mnemonic.entropy(),
             hex_literal::hex!("00000000000000000000000000000000")
@@ -295,15 +295,15 @@ mod tests {
     #[test]
     fn test_mnemonic_roundtrip() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
         assert_eq!(mnemonic.to_phrase(), phrase);
     }
 
     #[test]
     fn test_mnemonic_to_seed() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
-        let seed = mnemonic.to_seed_bytes("TREZOR");
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
+        let seed = mnemonic.seed("TREZOR");
 
         // Known test vector
         let expected = hex_literal::hex!(
@@ -319,7 +319,7 @@ mod tests {
         let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
         assert_eq!(mnemonic.word_count(), 24);
 
-        let phrase = mnemonic.to_phrase_string();
+        let phrase = mnemonic.phrase();
         let words: Vec<&str> = phrase.split_whitespace().collect();
         assert_eq!(words.len(), 24);
     }
@@ -327,11 +327,11 @@ mod tests {
     #[test]
     fn test_to_extended_key() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
         let xkey = mnemonic.to_extended_key("", Network::Mainnet).unwrap();
 
         // Derive BIP-44 Bitcoin account
-        let derived = xkey.derive_path_str("m/44'/0'/0'").unwrap();
+        let derived = xkey.derive("m/44'/0'/0'").unwrap();
         assert_eq!(derived.depth(), 3);
     }
 }

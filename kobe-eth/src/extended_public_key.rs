@@ -62,7 +62,7 @@ impl kobe::ExtendedPublicKey for ExtendedPublicKey {
 
     #[cfg(feature = "alloc")]
     fn derive_path(&self, path: &str) -> Result<Self> {
-        self.derive_path_str(path)
+        self.derive(path)
     }
 
     fn public_key(&self) -> Self::PublicKey {
@@ -148,11 +148,11 @@ impl ExtendedPublicKey {
         })
     }
 
-    /// Derive from a path string (e.g., "m/0/1/2").
+    /// Derives a child key from a path string (e.g., "m/0/1/2").
     ///
-    /// Only supports non-hardened paths.
+    /// Only supports non-hardened paths. Hardened derivation requires private key.
     #[cfg(feature = "alloc")]
-    pub fn derive_path_str(&self, path: &str) -> Result<Self> {
+    pub fn derive(&self, path: &str) -> Result<Self> {
         let path = path.trim();
 
         let path = if path.starts_with("m/") || path.starts_with("M/") {
@@ -187,16 +187,6 @@ impl ExtendedPublicKey {
     /// Get the corresponding Ethereum address.
     pub fn address(&self) -> Address {
         Address::from_public_key(&self.public_key)
-    }
-
-    /// Get a reference to the public key.
-    pub fn public_key_ref(&self) -> &PublicKey {
-        &self.public_key
-    }
-
-    /// Get a reference to the chain code.
-    pub fn chain_code_ref(&self) -> &[u8; 32] {
-        &self.chain_code
     }
 }
 
@@ -264,11 +254,11 @@ mod tests {
         let xpub = ExtendedPublicKey::from_extended_private_key_internal(&xprv);
 
         // Non-hardened path should work
-        let derived = xpub.derive_path_str("m/0/1/2").unwrap();
+        let derived = xpub.derive("m/0/1/2").unwrap();
         assert_eq!(derived.depth(), 3);
 
         // Hardened path should fail
-        let result = xpub.derive_path_str("m/0'/1/2");
+        let result = xpub.derive("m/0'/1/2");
         assert!(result.is_err());
     }
 

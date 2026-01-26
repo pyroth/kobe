@@ -110,21 +110,21 @@ impl Mnemonic {
         self.language
     }
 
-    /// Parse mnemonic from phrase string (auto-detects language).
+    /// Parses mnemonic from phrase string (auto-detects language).
     #[cfg(feature = "alloc")]
-    pub fn from_phrase_str(phrase: &str) -> Result<Self> {
+    pub fn parse(phrase: &str) -> Result<Self> {
         // Try each language to find a match
         for lang in Language::all() {
-            if let Ok(mnemonic) = Self::from_phrase_str_with_language(phrase, *lang) {
+            if let Ok(mnemonic) = Self::parse_with_language(phrase, *lang) {
                 return Ok(mnemonic);
             }
         }
         Err(Error::InvalidMnemonic)
     }
 
-    /// Parse mnemonic from phrase string with specific language.
+    /// Parses mnemonic from phrase string with specific language.
     #[cfg(feature = "alloc")]
-    pub fn from_phrase_str_with_language(phrase: &str, language: Language) -> Result<Self> {
+    pub fn parse_with_language(phrase: &str, language: Language) -> Result<Self> {
         let words: Vec<&str> = phrase.split_whitespace().collect();
 
         let expected_bits = match words.len() {
@@ -176,15 +176,15 @@ impl Mnemonic {
         Ok(Self { entropy, language })
     }
 
-    /// Convert mnemonic to phrase string.
+    /// Returns the mnemonic as a space-separated phrase string.
     #[cfg(feature = "alloc")]
-    pub fn to_phrase_string(&self) -> String {
-        self.to_phrase_string_with_language(self.language)
+    pub fn phrase(&self) -> String {
+        self.phrase_with_language(self.language)
     }
 
-    /// Convert mnemonic to phrase string with specific language.
+    /// Returns the mnemonic as a phrase string in the specified language.
     #[cfg(feature = "alloc")]
-    pub fn to_phrase_string_with_language(&self, language: Language) -> String {
+    pub fn phrase_with_language(&self, language: Language) -> String {
         // Compute checksum
         let hash = Sha256::digest(&self.entropy);
         let checksum_bits = self.entropy.len() / 4; // CS = ENT / 32 bits
@@ -223,10 +223,10 @@ impl Mnemonic {
         words.join(" ")
     }
 
-    /// Derive seed from mnemonic with optional passphrase.
+    /// Derives a 64-byte seed from the mnemonic with optional passphrase.
     #[cfg(feature = "alloc")]
-    pub fn to_seed_bytes(&self, passphrase: &str) -> [u8; 64] {
-        let phrase = self.to_phrase_string();
+    pub fn seed(&self, passphrase: &str) -> [u8; 64] {
+        let phrase = self.phrase();
         let salt = alloc::format!("mnemonic{}", passphrase);
 
         let mut seed = [0u8; 64];
@@ -238,7 +238,7 @@ impl Mnemonic {
     /// Derive an extended private key from this mnemonic.
     #[cfg(feature = "alloc")]
     pub fn to_extended_key(&self, passphrase: &str) -> Result<ExtendedPrivateKey> {
-        let seed = self.to_seed_bytes(passphrase);
+        let seed = self.seed(passphrase);
         kobe::ExtendedPrivateKey::from_seed(&seed)
     }
 
@@ -281,15 +281,15 @@ impl kobe::Mnemonic for Mnemonic {
     }
 
     fn from_phrase(phrase: &str) -> Result<Self> {
-        Self::from_phrase_str(phrase)
+        Self::parse(phrase)
     }
 
     fn to_phrase(&self) -> String {
-        self.to_phrase_string()
+        self.phrase()
     }
 
     fn to_seed(&self, passphrase: &str) -> [u8; 64] {
-        self.to_seed_bytes(passphrase)
+        self.seed(passphrase)
     }
 
     fn entropy(&self) -> &[u8] {
@@ -307,7 +307,7 @@ mod tests {
         // Test vector from BIP-39
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
         let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
-        let phrase = mnemonic.to_phrase_string();
+        let phrase = mnemonic.phrase();
         assert_eq!(
             phrase,
             "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn test_mnemonic_from_phrase() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
         assert_eq!(
             mnemonic.entropy(),
             hex_literal::hex!("00000000000000000000000000000000")
@@ -327,8 +327,8 @@ mod tests {
     #[test]
     fn test_mnemonic_to_seed() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
-        let seed = mnemonic.to_seed_bytes("TREZOR");
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
+        let seed = mnemonic.seed("TREZOR");
 
         // Known test vector
         let expected = hex_literal::hex!(
@@ -340,11 +340,11 @@ mod tests {
     #[test]
     fn test_to_extended_key() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
         let xkey = mnemonic.to_extended_key("").unwrap();
 
         // Derive standard Ethereum path
-        let derived = xkey.derive_path_str("m/44'/60'/0'/0/0").unwrap();
+        let derived = xkey.derive("m/44'/60'/0'/0/0").unwrap();
         assert_eq!(derived.depth(), 5);
 
         // Check we can get an address
@@ -357,7 +357,7 @@ mod tests {
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
         let mnemonic =
             Mnemonic::from_entropy_with_language(&entropy, Language::ChineseSimplified).unwrap();
-        let phrase = mnemonic.to_phrase_string();
+        let phrase = mnemonic.phrase();
 
         // Chinese phrase for all-zero entropy
         assert!(phrase.contains("的")); // Common Chinese character
@@ -365,8 +365,8 @@ mod tests {
 
         // Same entropy should produce same seed regardless of language
         let english_mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
-        let chinese_seed = mnemonic.to_seed_bytes("");
-        let english_seed = english_mnemonic.to_seed_bytes("");
+        let chinese_seed = mnemonic.seed("");
+        let english_seed = english_mnemonic.seed("");
 
         // Note: Seeds are DIFFERENT because the phrase string is different
         // This is expected BIP-39 behavior
@@ -377,7 +377,7 @@ mod tests {
     fn test_language_detection() {
         // Test auto-detection of English phrase
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::parse(phrase).unwrap();
         assert_eq!(mnemonic.language(), Language::English);
     }
 }

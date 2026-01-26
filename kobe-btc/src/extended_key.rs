@@ -76,7 +76,7 @@ impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
 
     #[cfg(feature = "alloc")]
     fn derive_path(&self, path: &str) -> Result<Self> {
-        self.derive_path_str(path)
+        self.derive(path)
     }
 
     fn private_key(&self) -> Self::PrivateKey {
@@ -208,11 +208,11 @@ impl ExtendedPrivateKey {
     ///
     /// # Example
     /// ```ignore
-    /// let account = xprv.derive_path_str("m/44'/0'/0'")?;
-    /// let address_key = account.derive_path_str("0/0")?;
+    /// let account = xprv.derive("m/44'/0'/0'");
+    /// let address_key = account.derive("0/0");
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn derive_path_str(&self, path: &str) -> Result<Self> {
+    pub fn derive(&self, path: &str) -> Result<Self> {
         let path = path.trim();
 
         // Handle paths starting with "m/" or "M/"
@@ -253,9 +253,9 @@ impl ExtendedPrivateKey {
         Ok(current)
     }
 
-    /// Get a reference to the underlying private key.
+    /// Returns a reference to the underlying private key.
     #[inline]
-    pub fn private_key_ref(&self) -> &PrivateKey {
+    pub fn secret_key(&self) -> &PrivateKey {
         &self.private_key
     }
 
@@ -264,19 +264,6 @@ impl ExtendedPrivateKey {
     #[must_use]
     pub fn public_key(&self) -> PublicKey {
         kobe::PrivateKey::public_key(&self.private_key)
-    }
-
-    /// Get a reference to the chain code.
-    #[inline]
-    pub fn chain_code_ref(&self) -> &[u8; 32] {
-        &self.chain_code
-    }
-
-    /// Get the depth in the derivation tree.
-    #[inline]
-    #[must_use]
-    pub const fn depth_value(&self) -> u8 {
-        self.depth
     }
 
     /// Get the parent fingerprint.
@@ -458,10 +445,10 @@ mod tests {
     fn test_derive_path() {
         let master =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
-        let derived = master.derive_path_str("m/0'").unwrap();
+        let derived = master.derive("m/0'").unwrap();
         assert_eq!(derived.depth(), 1);
 
-        let derived2 = master.derive_path_str("m/0'/1").unwrap();
+        let derived2 = master.derive("m/0'/1").unwrap();
         assert_eq!(derived2.depth(), 2);
     }
 

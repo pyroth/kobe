@@ -85,9 +85,11 @@ pub fn base58check_decode(encoded: &str) -> Result<(Vec<u8>, Vec<u8>)> {
     Ok((payload[..1].to_vec(), payload[1..].to_vec()))
 }
 
-/// Compute checksum for Ethereum address (EIP-55)
+/// Computes EIP-55 checksum encoding for an Ethereum address.
+///
+/// Returns a checksummed address string with mixed-case hex characters.
 #[cfg(feature = "alloc")]
-pub fn eth_checksum_address(address: &[u8; 20]) -> String {
+pub fn eip55_checksum(address: &[u8; 20]) -> String {
     let hex_addr = to_hex(address);
     let hash = crate::hash::keccak256(hex_addr.as_bytes());
 
@@ -413,7 +415,7 @@ mod tests {
 
             for (input, expected) in test_cases {
                 let addr_bytes: [u8; 20] = from_hex(input).unwrap().try_into().unwrap();
-                let checksummed = eth_checksum_address(&addr_bytes);
+                let checksummed = eip55_checksum(&addr_bytes);
                 assert_eq!(checksummed, *expected, "Failed for input: {}", input);
             }
         }
@@ -421,21 +423,21 @@ mod tests {
         #[test]
         fn test_eip55_all_zeros() {
             let addr = [0u8; 20];
-            let checksummed = eth_checksum_address(&addr);
+            let checksummed = eip55_checksum(&addr);
             assert_eq!(checksummed, "0x0000000000000000000000000000000000000000");
         }
 
         #[test]
         fn test_eip55_all_ones() {
             let addr = [0xff; 20];
-            let checksummed = eth_checksum_address(&addr);
+            let checksummed = eip55_checksum(&addr);
             assert_eq!(checksummed, "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF");
         }
 
         #[test]
         fn test_eip55_length() {
             let addr = hex_literal::hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
-            let checksummed = eth_checksum_address(&addr);
+            let checksummed = eip55_checksum(&addr);
             // "0x" + 40 hex chars = 42 total
             assert_eq!(checksummed.len(), 42);
             assert!(checksummed.starts_with("0x"));
@@ -445,8 +447,8 @@ mod tests {
         fn test_eip55_consistency() {
             // Same address should always produce same checksum
             let addr = hex_literal::hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
-            let result1 = eth_checksum_address(&addr);
-            let result2 = eth_checksum_address(&addr);
+            let result1 = eip55_checksum(&addr);
+            let result2 = eip55_checksum(&addr);
             assert_eq!(result1, result2);
         }
     }
