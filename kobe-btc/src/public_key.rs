@@ -1,9 +1,14 @@
 //! Bitcoin public key implementation.
+//!
+//! Implements `kobe::PublicKey` trait for unified wallet interface.
 
 use crate::address::{AddressFormat, BtcAddress};
 use crate::network::Network;
-use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
+use k256::ecdsa::{signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey};
 use kobe::{Error, Result, Signature};
+
+// Import traits to bring methods into scope
+use kobe::PublicKey as _;
 
 /// Bitcoin public key based on secp256k1.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,19 +68,63 @@ impl BtcPublicKey {
         result.copy_from_slice(point.as_bytes());
         result
     }
+}
 
-    /// Serialize to uncompressed bytes (65 bytes).
-    pub fn to_uncompressed_bytes(&self) -> [u8; 65] {
+// ============================================================================
+// kobe::PublicKey trait implementation
+// ============================================================================
+
+impl kobe::PublicKey for BtcPublicKey {
+    type Address = BtcAddress;
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        // Accept both compressed (33) and uncompressed (65) formats
+        match bytes.len() {
+            33 => Self::from_compressed_bytes(bytes),
+            65 => Self::from_uncompressed_bytes(bytes),
+            _ => Err(Error::InvalidLength {
+                expected: 33,
+                actual: bytes.len(),
+            }),
+        }
+    }
+
+    fn to_bytes(&self) -> [u8; 33] {
+        self.to_compressed_bytes()
+    }
+
+    fn to_uncompressed_bytes(&self) -> [u8; 65] {
         let point = self.inner.to_encoded_point(false);
         let mut result = [0u8; 65];
         result.copy_from_slice(point.as_bytes());
         result
     }
 
-    /// Serialize to bytes (compressed or uncompressed based on setting).
-    pub fn to_bytes(&self) -> [u8; 33] {
-        self.to_compressed_bytes()
+    fn to_address(&self) -> Self::Address {
+        // Default to mainnet P2PKH for trait compatibility
+        BtcAddress::from_public_key(self, Network::Mainnet, AddressFormat::P2PKH)
+            .expect("P2PKH address creation should not fail")
     }
+
+    fn verify(&self, hash: &[u8; 32], signature: &Signature) -> Result<()> {
+        let mut sig_bytes = [0u8; 64];
+        sig_bytes[..32].copy_from_slice(&signature.r);
+        sig_bytes[32..].copy_from_slice(&signature.s);
+
+        let sig =
+            k256::ecdsa::Signature::from_slice(&sig_bytes).map_err(|_| Error::InvalidSignature)?;
+
+        self.inner
+            .verify_prehash(hash, &sig)
+            .map_err(|_| Error::InvalidSignature)
+    }
+}
+
+// ============================================================================
+// Additional methods (Bitcoin-specific)
+// ============================================================================
+
+impl BtcPublicKey {
 
     /// Get the x-only public key (32 bytes) for Taproot.
     ///
@@ -158,6 +207,7 @@ impl BtcPublicKey {
 mod tests {
     use super::*;
     use crate::BtcPrivateKey;
+    use kobe::PrivateKey;
 
     #[test]
     fn test_public_key_derivation() {

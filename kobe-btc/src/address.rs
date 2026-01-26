@@ -1,4 +1,6 @@
 //! Bitcoin address implementation.
+//!
+//! Implements `kobe::Address` trait for unified wallet interface.
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -28,7 +30,7 @@ pub enum AddressFormat {
 }
 
 /// Bitcoin address.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BtcAddress {
     /// The address data (hash160 for most formats, 32 bytes for taproot)
     data: [u8; 32],
@@ -300,10 +302,32 @@ impl BtcAddress {
     }
 }
 
+// ============================================================================
+// kobe::Address trait implementation
+// ============================================================================
+
+impl kobe::Address for BtcAddress {
+    #[cfg(feature = "alloc")]
+    fn from_str(s: &str) -> Result<Self> {
+        <Self as core::str::FromStr>::from_str(s)
+    }
+
+    #[cfg(feature = "alloc")]
+    fn to_string(&self) -> String {
+        use alloc::string::ToString;
+        ToString::to_string(self)
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        &self.data[..self.data_len]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::BtcPrivateKey;
+    use kobe::PrivateKey;
 
     #[test]
     fn test_p2pkh_address() {

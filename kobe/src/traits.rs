@@ -2,13 +2,17 @@
 
 use crate::error::Result;
 use core::fmt::{Debug, Display};
-use rand_core::{CryptoRng, RngCore};
+use core::hash::Hash;
+use k256::elliptic_curve::rand_core::{CryptoRng, RngCore};
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
 /// A private key that can sign messages and derive public keys.
-pub trait PrivateKey: Clone + Debug + Sized + zeroize::Zeroize {
+///
+/// # Thread Safety
+/// This trait requires `Send + Sync` to allow wallet operations in async contexts.
+pub trait PrivateKey: Clone + Debug + Sized + zeroize::Zeroize + Send + Sync {
     /// The associated public key type
     type PublicKey: PublicKey;
 
@@ -29,7 +33,10 @@ pub trait PrivateKey: Clone + Debug + Sized + zeroize::Zeroize {
 }
 
 /// A public key that can verify signatures and derive addresses.
-pub trait PublicKey: Clone + Debug + PartialEq + Eq + Sized {
+///
+/// # Thread Safety
+/// This trait requires `Send + Sync` to allow wallet operations in async contexts.
+pub trait PublicKey: Clone + Debug + PartialEq + Eq + Sized + Send + Sync {
     /// The associated address type
     type Address: Address;
 
@@ -50,7 +57,10 @@ pub trait PublicKey: Clone + Debug + PartialEq + Eq + Sized {
 }
 
 /// A cryptocurrency address.
-pub trait Address: Clone + Debug + Display + PartialEq + Eq + Sized {
+///
+/// # Thread Safety
+/// This trait requires `Send + Sync` and `Hash` for use in collections and async contexts.
+pub trait Address: Clone + Debug + Display + PartialEq + Eq + Hash + Sized + Send + Sync {
     /// Parse from string representation
     #[cfg(feature = "alloc")]
     fn from_str(s: &str) -> Result<Self>;
@@ -114,10 +124,51 @@ impl Signature {
         result[33..].copy_from_slice(&self.s);
         result
     }
+
+    /// Serialize to DER format for Bitcoin transactions.
+    ///
+    /// Returns a variable-length DER-encoded signature (typically 70-72 bytes).
+    #[cfg(feature = "alloc")]
+    pub fn to_der(&self) -> alloc::vec::Vec<u8> {
+        // DER encoding: 0x30 [total-len] 0x02 [r-len] [r] 0x02 [s-len] [s]
+        let mut r = self.r.to_vec();
+        let mut s = self.s.to_vec();
+
+        // Remove leading zeros but keep one if high bit is set
+        while r.len() > 1 && r[0] == 0 && r[1] < 0x80 {
+            r.remove(0);
+        }
+        while s.len() > 1 && s[0] == 0 && s[1] < 0x80 {
+            s.remove(0);
+        }
+
+        // Add leading zero if high bit is set (to prevent negative interpretation)
+        if r[0] >= 0x80 {
+            r.insert(0, 0);
+        }
+        if s[0] >= 0x80 {
+            s.insert(0, 0);
+        }
+
+        let mut der = alloc::vec::Vec::with_capacity(6 + r.len() + s.len());
+        der.push(0x30); // SEQUENCE
+        der.push((4 + r.len() + s.len()) as u8); // Total length
+        der.push(0x02); // INTEGER
+        der.push(r.len() as u8);
+        der.extend_from_slice(&r);
+        der.push(0x02); // INTEGER
+        der.push(s.len() as u8);
+        der.extend_from_slice(&s);
+
+        der
+    }
 }
 
 /// Extended key for hierarchical deterministic wallets (BIP-32).
-pub trait ExtendedPrivateKey: Clone + Debug + Sized + zeroize::Zeroize {
+///
+/// # Thread Safety
+/// This trait requires `Send + Sync` to allow wallet operations in async contexts.
+pub trait ExtendedPrivateKey: Clone + Debug + Sized + zeroize::Zeroize + Send + Sync {
     /// The associated private key type
     type PrivateKey: PrivateKey;
 
@@ -144,8 +195,54 @@ pub trait ExtendedPrivateKey: Clone + Debug + Sized + zeroize::Zeroize {
     fn depth(&self) -> u8;
 }
 
+/// Extended public key for hierarchical deterministic wallets (BIP-32).
+///
+/// Supports watch-only wallets and non-hardened child key derivation.
+/// Cannot derive hardened children as that requires the private key.
+///
+/// # Thread Safety
+/// This trait requires `Send + Sync` to allow wallet operations in async contexts.
+pub trait ExtendedPublicKey: Clone + Debug + Sized + Send + Sync {
+    /// The associated public key type
+    type PublicKey: PublicKey;
+
+    /// Create from extended private key
+    fn from_extended_private_key<E: ExtendedPrivateKey>(xprv: &E) -> Result<Self>
+    where
+        E::PrivateKey: PrivateKey<PublicKey = Self::PublicKey>;
+
+    /// Derive child key at given index (non-hardened only)
+    ///
+    /// Returns an error if attempting hardened derivation (index >= 2^31)
+    fn derive_child(&self, index: u32) -> Result<Self>;
+
+    /// Derive from path string (e.g., "m/0/1/2")
+    ///
+    /// Only supports non-hardened paths. Returns error if path contains hardened indices.
+    #[cfg(feature = "alloc")]
+    fn derive_path(&self, path: &str) -> Result<Self>;
+
+    /// Get the underlying public key
+    fn public_key(&self) -> Self::PublicKey;
+
+    /// Get the chain code
+    fn chain_code(&self) -> [u8; 32];
+
+    /// Get the depth in the derivation tree
+    fn depth(&self) -> u8;
+
+    /// Get the parent fingerprint
+    fn parent_fingerprint(&self) -> [u8; 4];
+
+    /// Get the child index
+    fn child_index(&self) -> u32;
+}
+
 /// Mnemonic phrase for seed generation (BIP-39).
-pub trait Mnemonic: Clone + Debug + Sized {
+///
+/// # Thread Safety
+/// This trait requires `Send + Sync` and `zeroize::Zeroize` for security and async contexts.
+pub trait Mnemonic: Clone + Debug + Sized + zeroize::Zeroize + Send + Sync {
     /// Generate new mnemonic with specified word count (12, 15, 18, 21, 24)
     fn generate<R: RngCore + CryptoRng>(rng: &mut R, word_count: usize) -> Result<Self>;
 

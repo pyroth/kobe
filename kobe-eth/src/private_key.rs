@@ -5,6 +5,7 @@
 //! - EIP-191 personal message signing
 //! - EIP-712 typed data signing
 //! - Automatic memory zeroization
+//! - Implements `kobe::PrivateKey` trait
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -12,8 +13,12 @@ use alloc::string::String;
 use crate::address::EthAddress;
 use crate::public_key::EthPublicKey;
 use k256::ecdsa::SigningKey;
-use k256::elliptic_curve::rand_core::{CryptoRng, RngCore};
+use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, Result, Signature};
+
+// Import traits to bring methods into scope
+use kobe::PrivateKey as _;
+use kobe::PublicKey as _;
 use sha3::{Digest, Keccak256};
 use zeroize::Zeroize;
 
@@ -38,16 +43,20 @@ impl Drop for EthPrivateKey {
     }
 }
 
-impl EthPrivateKey {
-    /// Create a new random private key.
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
-        Self {
+// ============================================================================
+// kobe::PrivateKey trait implementation
+// ============================================================================
+
+impl kobe::PrivateKey for EthPrivateKey {
+    type PublicKey = EthPublicKey;
+
+    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
+        Ok(Self {
             inner: SigningKey::random(rng),
-        }
+        })
     }
 
-    /// Create from raw 32-byte secret.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 32 {
             return Err(Error::InvalidLength {
                 expected: 32,
@@ -58,23 +67,15 @@ impl EthPrivateKey {
         Ok(Self { inner })
     }
 
-    /// Serialize to raw 32-byte secret.
-    pub fn to_bytes(&self) -> [u8; 32] {
+    fn to_bytes(&self) -> [u8; 32] {
         self.inner.to_bytes().into()
     }
 
-    /// Get the corresponding public key.
-    pub fn public_key(&self) -> EthPublicKey {
+    fn public_key(&self) -> Self::PublicKey {
         EthPublicKey::from_signing_key(&self.inner)
     }
 
-    /// Get the corresponding address.
-    pub fn address(&self) -> EthAddress {
-        self.public_key().to_address()
-    }
-
-    /// Sign a message hash (32 bytes, prehashed).
-    pub fn sign_prehash(&self, hash: &[u8; 32]) -> Result<Signature> {
+    fn sign_prehash(&self, hash: &[u8; 32]) -> Result<Signature> {
         let (sig, recid) = self
             .inner
             .sign_prehash_recoverable(hash)
@@ -87,6 +88,17 @@ impl EthPrivateKey {
         s.copy_from_slice(&bytes[32..]);
 
         Ok(Signature::new(r, s, recid.to_byte()))
+    }
+}
+
+// ============================================================================
+// Additional methods (Ethereum-specific)
+// ============================================================================
+
+impl EthPrivateKey {
+    /// Get the corresponding address.
+    pub fn address(&self) -> EthAddress {
+        self.public_key().to_address()
     }
 
     /// Sign a message with EIP-191 prefix.

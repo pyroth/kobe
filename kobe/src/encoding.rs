@@ -115,60 +115,471 @@ pub fn eth_checksum_address(address: &[u8; 20]) -> String {
     result
 }
 
-/// Encode using Bech32 (used in Bitcoin SegWit)
+/// Encode using Bech32/Bech32m for Bitcoin SegWit addresses.
+///
+/// Uses Bech32 for witness version 0, Bech32m for version 1+ (Taproot).
 #[cfg(feature = "alloc")]
 pub fn bech32_encode(hrp: &str, version: u8, data: &[u8]) -> Result<String> {
     use bech32::Hrp;
 
     let hrp = Hrp::parse(hrp).map_err(|_| Error::InvalidEncoding)?;
-    let mut encoded_data = Vec::with_capacity(data.len() + 1);
-    encoded_data.push(version);
-    encoded_data.extend_from_slice(data);
+    let witness_version =
+        bech32::Fe32::try_from(version).map_err(|_| Error::InvalidEncoding)?;
 
-    bech32::encode::<bech32::Bech32m>(hrp, &encoded_data).map_err(|_| Error::InvalidEncoding)
+    bech32::segwit::encode(hrp, witness_version, data).map_err(|_| Error::InvalidEncoding)
 }
 
-/// Decode Bech32 encoded string
+/// Decode Bech32/Bech32m encoded SegWit address.
+///
+/// Returns (hrp, witness_version, witness_program).
 #[cfg(feature = "alloc")]
 pub fn bech32_decode(encoded: &str) -> Result<(String, u8, Vec<u8>)> {
-    let (hrp, data) = bech32::decode(encoded).map_err(|_| Error::InvalidEncoding)?;
+    let (hrp, version, program) =
+        bech32::segwit::decode(encoded).map_err(|_| Error::InvalidEncoding)?;
 
-    if data.is_empty() {
-        return Err(Error::InvalidLength {
-            expected: 1,
-            actual: 0,
-        });
-    }
-
-    let version = data[0];
-    let payload = data[1..].to_vec();
-
-    Ok((hrp.to_string(), version, payload))
+    Ok((hrp.to_string(), version.to_u8(), program))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_hex_roundtrip() {
-        let original = [0xde, 0xad, 0xbe, 0xef];
-        let encoded = to_hex(&original);
-        assert_eq!(encoded, "deadbeef");
-        let decoded = from_hex(&encoded).unwrap();
-        assert_eq!(decoded, original);
+    mod hex_tests {
+        use super::*;
+
+        #[test]
+        fn test_to_hex_empty() {
+            assert_eq!(to_hex(&[]), "");
+        }
+
+        #[test]
+        fn test_to_hex_single_byte() {
+            assert_eq!(to_hex(&[0x00]), "00");
+            assert_eq!(to_hex(&[0xff]), "ff");
+            assert_eq!(to_hex(&[0x0a]), "0a");
+            assert_eq!(to_hex(&[0xa0]), "a0");
+        }
+
+        #[test]
+        fn test_to_hex_multiple_bytes() {
+            assert_eq!(to_hex(&[0xde, 0xad, 0xbe, 0xef]), "deadbeef");
+            assert_eq!(to_hex(&[0x00, 0x00, 0x00]), "000000");
+            assert_eq!(
+                to_hex(&[0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]),
+                "123456789abcdef0"
+            );
+        }
+
+        #[test]
+        fn test_to_hex_all_nibbles() {
+            let bytes: Vec<u8> = (0..16).collect();
+            assert_eq!(to_hex(&bytes), "000102030405060708090a0b0c0d0e0f");
+        }
+
+        #[test]
+        fn test_to_hex_eth_address_size() {
+            let addr = hex_literal::hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
+            assert_eq!(to_hex(&addr), "5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
+        }
+
+        #[test]
+        fn test_to_hex_private_key_size() {
+            let key = hex_literal::hex!(
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            );
+            assert_eq!(
+                to_hex(&key),
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            );
+        }
+
+        #[test]
+        fn test_from_hex_empty() {
+            assert_eq!(from_hex("").unwrap(), Vec::<u8>::new());
+        }
+
+        #[test]
+        fn test_from_hex_lowercase() {
+            assert_eq!(from_hex("deadbeef").unwrap(), vec![0xde, 0xad, 0xbe, 0xef]);
+        }
+
+        #[test]
+        fn test_from_hex_uppercase() {
+            assert_eq!(from_hex("DEADBEEF").unwrap(), vec![0xde, 0xad, 0xbe, 0xef]);
+        }
+
+        #[test]
+        fn test_from_hex_mixed_case() {
+            assert_eq!(from_hex("DeAdBeEf").unwrap(), vec![0xde, 0xad, 0xbe, 0xef]);
+        }
+
+        #[test]
+        fn test_from_hex_with_0x_prefix() {
+            assert_eq!(
+                from_hex("0xdeadbeef").unwrap(),
+                vec![0xde, 0xad, 0xbe, 0xef]
+            );
+            assert_eq!(
+                from_hex("0xDEADBEEF").unwrap(),
+                vec![0xde, 0xad, 0xbe, 0xef]
+            );
+        }
+
+        #[test]
+        fn test_from_hex_leading_zeros() {
+            assert_eq!(from_hex("000000").unwrap(), vec![0x00, 0x00, 0x00]);
+            assert_eq!(from_hex("00ff00").unwrap(), vec![0x00, 0xff, 0x00]);
+        }
+
+        #[test]
+        fn test_from_hex_invalid_odd_length() {
+            assert!(from_hex("abc").is_err());
+            assert!(from_hex("0x123").is_err());
+        }
+
+        #[test]
+        fn test_from_hex_invalid_characters() {
+            assert!(from_hex("ghij").is_err());
+            assert!(from_hex("0xzz").is_err());
+            assert!(from_hex("xx").is_err());
+            assert!(from_hex("  ").is_err());
+        }
+
+        #[test]
+        fn test_hex_roundtrip() {
+            let test_cases: &[&[u8]] = &[
+                &[],
+                &[0x00],
+                &[0xff],
+                &[0xde, 0xad, 0xbe, 0xef],
+                &[0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07],
+            ];
+
+            for original in test_cases {
+                let encoded = to_hex(original);
+                let decoded = from_hex(&encoded).unwrap();
+                assert_eq!(decoded, *original);
+            }
+        }
     }
 
-    #[test]
-    fn test_hex_with_prefix() {
-        let decoded = from_hex("0xdeadbeef").unwrap();
-        assert_eq!(decoded, [0xde, 0xad, 0xbe, 0xef]);
+    mod base58check_tests {
+        use super::*;
+
+        #[test]
+        fn test_base58check_encode_p2pkh_mainnet() {
+            // Bitcoin P2PKH mainnet address (version 0x00)
+            let version = hex_literal::hex!("00");
+            let payload = hex_literal::hex!("62e907b15cbf27d5425399ebf6f0fb50ebb88f18");
+            let encoded = base58check_encode(&version, &payload);
+            assert_eq!(encoded, "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+        }
+
+        #[test]
+        fn test_base58check_encode_p2pkh_testnet() {
+            // Bitcoin P2PKH testnet address (version 0x6f)
+            let version = hex_literal::hex!("6f");
+            let payload = hex_literal::hex!("62e907b15cbf27d5425399ebf6f0fb50ebb88f18");
+            let encoded = base58check_encode(&version, &payload);
+            assert_eq!(encoded, "mpXwg4jMtRhuSpVq4xS3HFHmCmWp9NyGKt");
+        }
+
+        #[test]
+        fn test_base58check_encode_p2sh_mainnet() {
+            // Bitcoin P2SH mainnet address (version 0x05)
+            let version = hex_literal::hex!("05");
+            let payload = hex_literal::hex!("89abcdefabbaabbaabbaabbaabbaabbaabbaabba");
+            let encoded = base58check_encode(&version, &payload);
+            assert_eq!(encoded, "3EExK1K1TF3v7zsFtQHt14XqexCwgmXM1y");
+        }
+
+        #[test]
+        fn test_base58check_encode_wif_uncompressed() {
+            // WIF uncompressed private key (version 0x80)
+            let version = hex_literal::hex!("80");
+            let payload = hex_literal::hex!(
+                "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"
+            );
+            let encoded = base58check_encode(&version, &payload);
+            assert_eq!(encoded, "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ");
+        }
+
+        #[test]
+        fn test_base58check_encode_wif_compressed() {
+            // WIF compressed private key (version 0x80, payload ends with 0x01)
+            let version = hex_literal::hex!("80");
+            let payload = hex_literal::hex!(
+                "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d01"
+            );
+            let encoded = base58check_encode(&version, &payload);
+            assert_eq!(encoded, "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617");
+        }
+
+        #[test]
+        fn test_base58check_decode_p2pkh_mainnet() {
+            let (version, payload) =
+                base58check_decode("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap();
+            assert_eq!(version, vec![0x00]);
+            assert_eq!(
+                payload,
+                hex_literal::hex!("62e907b15cbf27d5425399ebf6f0fb50ebb88f18").to_vec()
+            );
+        }
+
+        #[test]
+        fn test_base58check_decode_p2pkh_testnet() {
+            let (version, payload) =
+                base58check_decode("mpXwg4jMtRhuSpVq4xS3HFHmCmWp9NyGKt").unwrap();
+            assert_eq!(version, vec![0x6f]);
+            assert_eq!(
+                payload,
+                hex_literal::hex!("62e907b15cbf27d5425399ebf6f0fb50ebb88f18").to_vec()
+            );
+        }
+
+        #[test]
+        fn test_base58check_decode_invalid_checksum() {
+            // Modified last character to invalidate checksum
+            let result = base58check_decode("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb");
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_base58check_decode_too_short() {
+            let result = base58check_decode("1234");
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_base58check_decode_invalid_base58() {
+            // Contains invalid base58 characters (0, O, I, l)
+            let result = base58check_decode("0OIl");
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_base58check_roundtrip() {
+            let test_cases: &[(&[u8], &[u8])] = &[
+                (&[0x00], &[0x01, 0x02, 0x03, 0x04, 0x05]),
+                (&[0x05], &[0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]),
+                (
+                    &[0x80],
+                    &[
+                        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67,
+                        0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+                        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+                    ],
+                ),
+            ];
+
+            for (version, payload) in test_cases {
+                let encoded = base58check_encode(version, payload);
+                let (decoded_version, decoded_payload) = base58check_decode(&encoded).unwrap();
+                assert_eq!(decoded_version, *version);
+                assert_eq!(decoded_payload, *payload);
+            }
+        }
     }
 
-    #[test]
-    fn test_eth_checksum_address() {
-        let addr: [u8; 20] = hex_literal::hex!("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
-        let checksummed = eth_checksum_address(&addr);
-        assert_eq!(checksummed, "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
+    mod eip55_tests {
+        use super::*;
+
+        #[test]
+        fn test_eip55_official_test_vectors() {
+            // Official EIP-55 test vectors
+            let test_cases: &[(&str, &str)] = &[
+                (
+                    "5aaeb6053f3e94c9b9a09f33669435e7ef1beaed",
+                    "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+                ),
+                (
+                    "fb6916095ca1df60bb79ce92ce3ea74c37c5d359",
+                    "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
+                ),
+                (
+                    "dbf03b407c01e7cd3cbea99509d93f8dddc8c6fb",
+                    "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB",
+                ),
+                (
+                    "d1220a0cf47c7b9be7a2e6ba89f429762e7b9adb",
+                    "0xD1220A0cf47c7B9Be7A2E6BA89F429762e7b9aDb",
+                ),
+            ];
+
+            for (input, expected) in test_cases {
+                let addr_bytes: [u8; 20] = from_hex(input).unwrap().try_into().unwrap();
+                let checksummed = eth_checksum_address(&addr_bytes);
+                assert_eq!(checksummed, *expected, "Failed for input: {}", input);
+            }
+        }
+
+        #[test]
+        fn test_eip55_all_zeros() {
+            let addr = [0u8; 20];
+            let checksummed = eth_checksum_address(&addr);
+            assert_eq!(checksummed, "0x0000000000000000000000000000000000000000");
+        }
+
+        #[test]
+        fn test_eip55_all_ones() {
+            let addr = [0xff; 20];
+            let checksummed = eth_checksum_address(&addr);
+            assert_eq!(checksummed, "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF");
+        }
+
+        #[test]
+        fn test_eip55_length() {
+            let addr = hex_literal::hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
+            let checksummed = eth_checksum_address(&addr);
+            // "0x" + 40 hex chars = 42 total
+            assert_eq!(checksummed.len(), 42);
+            assert!(checksummed.starts_with("0x"));
+        }
+
+        #[test]
+        fn test_eip55_consistency() {
+            // Same address should always produce same checksum
+            let addr = hex_literal::hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
+            let result1 = eth_checksum_address(&addr);
+            let result2 = eth_checksum_address(&addr);
+            assert_eq!(result1, result2);
+        }
+    }
+
+    mod bech32_tests {
+        use super::*;
+
+        #[test]
+        fn test_bech32_decode_p2wpkh_mainnet() {
+            // SegWit v0 P2WPKH mainnet
+            let (hrp, version, data) =
+                bech32_decode("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4").unwrap();
+            assert_eq!(hrp, "bc");
+            assert_eq!(version, 0);
+            assert_eq!(
+                data,
+                hex_literal::hex!("751e76e8199196d454941c45d1b3a323f1433bd6").to_vec()
+            );
+        }
+
+        #[test]
+        fn test_bech32_decode_p2wsh_mainnet() {
+            // SegWit v0 P2WSH mainnet (32 bytes)
+            let (hrp, version, data) =
+                bech32_decode("bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3")
+                    .unwrap();
+            assert_eq!(hrp, "bc");
+            assert_eq!(version, 0);
+            assert_eq!(
+                data,
+                hex_literal::hex!(
+                    "1863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262"
+                )
+                .to_vec()
+            );
+        }
+
+        #[test]
+        fn test_bech32_decode_p2wpkh_testnet() {
+            // SegWit v0 P2WPKH testnet
+            let (hrp, version, data) =
+                bech32_decode("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx").unwrap();
+            assert_eq!(hrp, "tb");
+            assert_eq!(version, 0);
+            assert_eq!(
+                data,
+                hex_literal::hex!("751e76e8199196d454941c45d1b3a323f1433bd6").to_vec()
+            );
+        }
+
+        #[test]
+        fn test_bech32_decode_p2tr_mainnet() {
+            // SegWit v1 P2TR (Taproot) mainnet - uses Bech32m
+            let (hrp, version, data) =
+                bech32_decode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0")
+                    .unwrap();
+            assert_eq!(hrp, "bc");
+            assert_eq!(version, 1);
+            assert_eq!(
+                data,
+                hex_literal::hex!(
+                    "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                )
+                .to_vec()
+            );
+        }
+
+        #[test]
+        fn test_bech32_decode_invalid() {
+            // Invalid bech32 strings
+            assert!(bech32_decode("bc1invalid").is_err());
+            assert!(bech32_decode("not_bech32").is_err());
+            assert!(bech32_decode("").is_err());
+        }
+
+        #[test]
+        fn test_bech32_encode_taproot() {
+            // Encode Taproot address (uses Bech32m)
+            let data =
+                hex_literal::hex!("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+            let encoded = bech32_encode("bc", 1, &data).unwrap();
+            // Note: Our encode function uses Bech32m, so it matches Taproot encoding
+            assert!(encoded.starts_with("bc1p"));
+            assert_eq!(encoded.len(), 62); // bc1p + 58 chars
+        }
+
+        #[test]
+        fn test_bech32_encode_invalid_hrp() {
+            let data = hex_literal::hex!("751e76e8199196d454941c45d1b3a323f1433bd6");
+            // Empty HRP is invalid
+            assert!(bech32_encode("", 0, &data).is_err());
+        }
+
+        #[test]
+        fn test_bech32_roundtrip() {
+            let test_cases: &[(u8, &[u8])] = &[
+                (1, &hex_literal::hex!("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")),
+                (1, &hex_literal::hex!("0000000000000000000000000000000000000000000000000000000000000001")),
+            ];
+
+            for (version, data) in test_cases {
+                let encoded = bech32_encode("bc", *version, data).unwrap();
+                let (hrp, decoded_version, decoded_data) = bech32_decode(&encoded).unwrap();
+                assert_eq!(hrp, "bc");
+                assert_eq!(decoded_version, *version);
+                assert_eq!(decoded_data, *data);
+            }
+        }
+    }
+
+    mod edge_case_tests {
+        use super::*;
+
+        #[test]
+        fn test_hex_nibble_boundaries() {
+            // Test all hex characters
+            assert_eq!(from_hex("0123456789abcdef").unwrap().len(), 8);
+            assert_eq!(from_hex("0123456789ABCDEF").unwrap().len(), 8);
+        }
+
+        #[test]
+        fn test_base58check_leading_zeros() {
+            // Addresses with leading zeros in payload
+            let version = [0x00u8];
+            let payload = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03];
+            let encoded = base58check_encode(&version, &payload);
+            let (decoded_version, decoded_payload) = base58check_decode(&encoded).unwrap();
+            assert_eq!(decoded_version, version);
+            assert_eq!(decoded_payload, payload);
+        }
+
+        #[test]
+        fn test_large_data_encoding() {
+            // Test with larger data sizes
+            let large_data: Vec<u8> = (0..=255).collect();
+            let hex_encoded = to_hex(&large_data);
+            let decoded = from_hex(&hex_encoded).unwrap();
+            assert_eq!(decoded, large_data);
+        }
     }
 }

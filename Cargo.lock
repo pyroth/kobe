@@ -280,10 +280,13 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "hex-literal",
+ "hmac",
  "k256",
  "kobe",
+ "pbkdf2",
  "rand",
  "rand_core 0.9.5",
+ "sha2",
  "sha3",
  "zeroize",
 ]

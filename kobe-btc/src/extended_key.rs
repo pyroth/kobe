@@ -1,4 +1,6 @@
 //! BIP-32 Hierarchical Deterministic (HD) key derivation.
+//!
+//! Implements `kobe::ExtendedPrivateKey` trait for unified wallet interface.
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -13,6 +15,9 @@ use hmac::{Hmac, Mac};
 use k256::elliptic_curve::ops::Reduce;
 use k256::{Scalar, U256};
 use kobe::{Error, Result};
+
+// Import traits to bring methods into scope
+use kobe::PrivateKey as _;
 use sha2::Sha512;
 use zeroize::Zeroize;
 
@@ -97,9 +102,51 @@ impl Drop for ExtendedPrivateKey {
     }
 }
 
+// ============================================================================
+// kobe::ExtendedPrivateKey trait implementation
+// ============================================================================
+
+impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
+    type PrivateKey = BtcPrivateKey;
+
+    fn from_seed(seed: &[u8]) -> Result<Self> {
+        // Default to mainnet for trait implementation
+        Self::from_seed_with_network(seed, Network::Mainnet)
+    }
+
+    fn derive_child(&self, index: u32) -> Result<Self> {
+        self.derive_child_index(ChildIndex::Normal(index))
+    }
+
+    fn derive_child_hardened(&self, index: u32) -> Result<Self> {
+        self.derive_child_index(ChildIndex::Hardened(index))
+    }
+
+    #[cfg(feature = "alloc")]
+    fn derive_path(&self, path: &str) -> Result<Self> {
+        self.derive_path_str(path)
+    }
+
+    fn private_key(&self) -> Self::PrivateKey {
+        self.private_key.clone()
+    }
+
+    fn chain_code(&self) -> [u8; 32] {
+        self.chain_code
+    }
+
+    fn depth(&self) -> u8 {
+        self.depth
+    }
+}
+
+// ============================================================================
+// Additional methods (Bitcoin-specific)
+// ============================================================================
+
 impl ExtendedPrivateKey {
-    /// Create master key from seed (BIP-32).
-    pub fn from_seed(seed: &[u8], network: Network) -> Result<Self> {
+    /// Create master key from seed with network (BIP-32).
+    pub fn from_seed_with_network(seed: &[u8], network: Network) -> Result<Self> {
         if seed.len() < 16 || seed.len() > 64 {
             return Err(Error::InvalidLength {
                 expected: 32,
@@ -129,7 +176,7 @@ impl ExtendedPrivateKey {
     }
 
     /// Derive a child key at the given index.
-    pub fn derive_child(&self, index: ChildIndex) -> Result<Self> {
+    pub fn derive_child_index(&self, index: ChildIndex) -> Result<Self> {
         if self.depth == 255 {
             return Err(Error::MaxDepthExceeded);
         }
@@ -195,7 +242,7 @@ impl ExtendedPrivateKey {
 
     /// Derive from a path string (e.g., "m/44'/0'/0'/0/0").
     #[cfg(feature = "alloc")]
-    pub fn derive_path(&self, path: &str) -> Result<Self> {
+    pub fn derive_path_str(&self, path: &str) -> Result<Self> {
         let path = path.trim();
 
         // Handle paths starting with "m/" or "M/"
@@ -230,29 +277,29 @@ impl ExtendedPrivateKey {
                 ChildIndex::Normal(index)
             };
 
-            current = current.derive_child(child_index)?;
+            current = current.derive_child_index(child_index)?;
         }
 
         Ok(current)
     }
 
-    /// Get the underlying private key.
-    pub fn private_key(&self) -> &BtcPrivateKey {
+    /// Get a reference to the underlying private key.
+    pub fn private_key_ref(&self) -> &BtcPrivateKey {
         &self.private_key
     }
 
     /// Get the corresponding public key.
     pub fn public_key(&self) -> BtcPublicKey {
-        self.private_key.public_key()
+        kobe::PrivateKey::public_key(&self.private_key)
     }
 
-    /// Get the chain code.
-    pub fn chain_code(&self) -> &[u8; 32] {
+    /// Get a reference to the chain code.
+    pub fn chain_code_ref(&self) -> &[u8; 32] {
         &self.chain_code
     }
 
-    /// Get the depth.
-    pub const fn depth(&self) -> u8 {
+    /// Get the depth in the derivation tree.
+    pub const fn depth_value(&self) -> u8 {
         self.depth
     }
 
@@ -385,13 +432,14 @@ impl core::fmt::Debug for ExtendedPrivateKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use kobe::ExtendedPrivateKey as _;
 
     // BIP-32 test vector 1
     const TEST_SEED_1: &[u8] = &hex_literal::hex!("000102030405060708090a0b0c0d0e0f");
 
     #[test]
     fn test_master_key_from_seed() {
-        let xkey = ExtendedPrivateKey::from_seed(TEST_SEED_1, Network::Mainnet).unwrap();
+        let xkey = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(xkey.depth(), 0);
 
         let xprv = xkey.to_xprv();
@@ -400,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_bip32_vector1_chain_m() {
-        let xkey = ExtendedPrivateKey::from_seed(TEST_SEED_1, Network::Mainnet).unwrap();
+        let xkey = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(
             xkey.to_xprv(),
             "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
@@ -409,8 +457,8 @@ mod tests {
 
     #[test]
     fn test_bip32_vector1_chain_m_0h() {
-        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1, Network::Mainnet).unwrap();
-        let child = master.derive_child(ChildIndex::Hardened(0)).unwrap();
+        let master = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let child = master.derive_child_index(ChildIndex::Hardened(0)).unwrap();
         assert_eq!(
             child.to_xprv(),
             "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"
@@ -419,17 +467,17 @@ mod tests {
 
     #[test]
     fn test_derive_path() {
-        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1, Network::Mainnet).unwrap();
-        let derived = master.derive_path("m/0'").unwrap();
+        let master = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let derived = master.derive_path_str("m/0'").unwrap();
         assert_eq!(derived.depth(), 1);
 
-        let derived2 = master.derive_path("m/0'/1").unwrap();
+        let derived2 = master.derive_path_str("m/0'/1").unwrap();
         assert_eq!(derived2.depth(), 2);
     }
 
     #[test]
     fn test_xprv_roundtrip() {
-        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1, Network::Mainnet).unwrap();
+        let master = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xprv = master.to_xprv();
         let recovered = ExtendedPrivateKey::from_xprv(&xprv).unwrap();
         assert_eq!(master.to_xprv(), recovered.to_xprv());
@@ -437,7 +485,7 @@ mod tests {
 
     #[test]
     fn test_testnet_tprv() {
-        let xkey = ExtendedPrivateKey::from_seed(TEST_SEED_1, Network::Testnet).unwrap();
+        let xkey = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
         let tprv = xkey.to_xprv();
         assert!(tprv.starts_with("tprv"));
     }

@@ -21,16 +21,25 @@ extern crate alloc;
 
 mod address;
 mod extended_key;
+mod extended_public_key;
 mod mnemonic;
 mod network;
 mod private_key;
 mod public_key;
+mod transaction;
 
 pub use address::{AddressFormat, BtcAddress};
 pub use extended_key::{ChildIndex, ExtendedPrivateKey};
+pub use extended_public_key::ExtendedPublicKey;
 pub use mnemonic::Mnemonic;
 pub use network::Network;
 pub use private_key::BtcPrivateKey;
 pub use public_key::BtcPublicKey;
+pub use transaction::{BtcTransaction, BtcTxId, p2pkh_script, p2wpkh_script};
 
+// Re-export kobe core types and traits
 pub use kobe::{Error, Result, Signature};
+pub use kobe::{
+    Address, ExtendedPrivateKey as ExtendedPrivateKeyTrait,
+    ExtendedPublicKey as ExtendedPublicKeyTrait, Mnemonic as MnemonicTrait, PrivateKey, PublicKey,
+};

@@ -1,13 +1,18 @@
 //! Bitcoin private key implementation.
+//!
+//! Implements `kobe::PrivateKey` trait for unified wallet interface.
 
 use crate::address::{AddressFormat, BtcAddress};
 use crate::network::Network;
 use crate::public_key::BtcPublicKey;
 use k256::ecdsa::SigningKey;
-use k256::elliptic_curve::rand_core::{CryptoRng, RngCore};
 use kobe::hash::double_sha256;
+use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, Result, Signature};
 use zeroize::Zeroize;
+
+// Import traits to bring methods into scope
+use kobe::PrivateKey as _;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -34,17 +39,21 @@ impl Drop for BtcPrivateKey {
     }
 }
 
-impl BtcPrivateKey {
-    /// Create a new random private key.
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
-        Self {
+// ============================================================================
+// kobe::PrivateKey trait implementation
+// ============================================================================
+
+impl kobe::PrivateKey for BtcPrivateKey {
+    type PublicKey = BtcPublicKey;
+
+    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
+        Ok(Self {
             inner: SigningKey::random(rng),
             compressed: true,
-        }
+        })
     }
 
-    /// Create from raw 32-byte secret.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 32 {
             return Err(Error::InvalidLength {
                 expected: 32,
@@ -58,6 +67,35 @@ impl BtcPrivateKey {
         })
     }
 
+    fn to_bytes(&self) -> [u8; 32] {
+        self.inner.to_bytes().into()
+    }
+
+    fn public_key(&self) -> Self::PublicKey {
+        BtcPublicKey::from_signing_key(&self.inner, self.compressed)
+    }
+
+    fn sign_prehash(&self, hash: &[u8; 32]) -> Result<Signature> {
+        let (sig, recid) = self
+            .inner
+            .sign_prehash_recoverable(hash)
+            .map_err(|_| Error::CryptoError)?;
+
+        let bytes = sig.to_bytes();
+        let mut r = [0u8; 32];
+        let mut s = [0u8; 32];
+        r.copy_from_slice(&bytes[..32]);
+        s.copy_from_slice(&bytes[32..]);
+
+        Ok(Signature::new(r, s, recid.to_byte()))
+    }
+}
+
+// ============================================================================
+// Additional methods (Bitcoin-specific)
+// ============================================================================
+
+impl BtcPrivateKey {
     /// Set whether to use compressed public key.
     pub fn set_compressed(&mut self, compressed: bool) {
         self.compressed = compressed;
@@ -66,16 +104,6 @@ impl BtcPrivateKey {
     /// Check if using compressed public key.
     pub const fn is_compressed(&self) -> bool {
         self.compressed
-    }
-
-    /// Serialize to raw 32-byte secret.
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.inner.to_bytes().into()
-    }
-
-    /// Get the corresponding public key.
-    pub fn public_key(&self) -> BtcPublicKey {
-        BtcPublicKey::from_signing_key(&self.inner, self.compressed)
     }
 
     /// Get the corresponding address.
@@ -149,22 +177,6 @@ impl BtcPrivateKey {
         result[payload_len..payload_len + 4].copy_from_slice(&checksum[..4]);
 
         bs58::encode(&result[..payload_len + 4]).into_string()
-    }
-
-    /// Sign a message hash (32 bytes, prehashed).
-    pub fn sign_prehash(&self, hash: &[u8; 32]) -> Result<Signature> {
-        let (sig, recid) = self
-            .inner
-            .sign_prehash_recoverable(hash)
-            .map_err(|_| Error::CryptoError)?;
-
-        let bytes = sig.to_bytes();
-        let mut r = [0u8; 32];
-        let mut s = [0u8; 32];
-        r.copy_from_slice(&bytes[..32]);
-        s.copy_from_slice(&bytes[32..]);
-
-        Ok(Signature::new(r, s, recid.to_byte()))
     }
 
     /// Sign a Bitcoin message with the standard prefix.

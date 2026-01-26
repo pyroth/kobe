@@ -1,8 +1,11 @@
 //! Ethereum public key implementation.
+//!
+//! Implements `kobe::PublicKey` trait for unified wallet interface.
 
 use crate::address::EthAddress;
-use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
+use k256::ecdsa::{signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey};
 use kobe::{Error, Result, Signature};
+
 
 /// Ethereum public key based on secp256k1.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,43 +21,46 @@ impl EthPublicKey {
         }
     }
 
-    /// Create from raw compressed bytes (33 bytes).
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    /// Get the raw 64-byte public key (without 0x04 prefix).
+    pub fn to_raw_bytes(&self) -> [u8; 64] {
+        let uncompressed = kobe::PublicKey::to_uncompressed_bytes(self);
+        let mut result = [0u8; 64];
+        result.copy_from_slice(&uncompressed[1..]);
+        result
+    }
+}
+
+// ============================================================================
+// kobe::PublicKey trait implementation
+// ============================================================================
+
+impl kobe::PublicKey for EthPublicKey {
+    type Address = EthAddress;
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let inner = VerifyingKey::from_sec1_bytes(bytes).map_err(|_| Error::InvalidPublicKey)?;
         Ok(Self { inner })
     }
 
-    /// Serialize to compressed bytes (33 bytes).
-    pub fn to_bytes(&self) -> [u8; 33] {
+    fn to_bytes(&self) -> [u8; 33] {
         let point = self.inner.to_encoded_point(true);
         let mut result = [0u8; 33];
         result.copy_from_slice(point.as_bytes());
         result
     }
 
-    /// Serialize to uncompressed bytes (65 bytes with 0x04 prefix).
-    pub fn to_uncompressed_bytes(&self) -> [u8; 65] {
+    fn to_uncompressed_bytes(&self) -> [u8; 65] {
         let point = self.inner.to_encoded_point(false);
         let mut result = [0u8; 65];
         result.copy_from_slice(point.as_bytes());
         result
     }
 
-    /// Get the raw 64-byte public key (without 0x04 prefix).
-    pub fn to_raw_bytes(&self) -> [u8; 64] {
-        let uncompressed = self.to_uncompressed_bytes();
-        let mut result = [0u8; 64];
-        result.copy_from_slice(&uncompressed[1..]);
-        result
-    }
-
-    /// Derive the Ethereum address.
-    pub fn to_address(&self) -> EthAddress {
+    fn to_address(&self) -> Self::Address {
         EthAddress::from_public_key(self)
     }
 
-    /// Verify a signature against a message hash.
-    pub fn verify(&self, hash: &[u8; 32], signature: &Signature) -> Result<()> {
+    fn verify(&self, hash: &[u8; 32], signature: &Signature) -> Result<()> {
         let mut sig_bytes = [0u8; 64];
         sig_bytes[..32].copy_from_slice(&signature.r);
         sig_bytes[32..].copy_from_slice(&signature.s);
@@ -66,6 +72,13 @@ impl EthPublicKey {
             .verify_prehash(hash, &sig)
             .map_err(|_| Error::InvalidSignature)
     }
+}
+
+// ============================================================================
+// Additional methods (Ethereum-specific)
+// ============================================================================
+
+impl EthPublicKey {
 
     /// Recover public key from signature and message hash.
     pub fn recover_from_prehash(hash: &[u8; 32], signature: &Signature) -> Result<Self> {
@@ -133,6 +146,7 @@ fn format_usize(mut n: usize) -> ([u8; 20], usize) {
 mod tests {
     use super::*;
     use crate::EthPrivateKey;
+    use kobe::{PrivateKey, PublicKey};
 
     #[test]
     fn test_public_key_derivation() {

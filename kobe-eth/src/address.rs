@@ -1,4 +1,6 @@
 //! Ethereum address implementation.
+//!
+//! Implements `kobe::Address` trait for unified wallet interface.
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -104,6 +106,17 @@ impl core::str::FromStr for EthAddress {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
+        kobe::Address::from_str(s)
+    }
+}
+
+// ============================================================================
+// kobe::Address trait implementation
+// ============================================================================
+
+impl kobe::Address for EthAddress {
+    #[cfg(feature = "alloc")]
+    fn from_str(s: &str) -> Result<Self> {
         let s = s.strip_prefix("0x").unwrap_or(s);
         if s.len() != 40 {
             return Err(Error::InvalidLength {
@@ -122,6 +135,15 @@ impl core::str::FromStr for EthAddress {
         }
 
         Ok(Self(bytes))
+    }
+
+    #[cfg(feature = "alloc")]
+    fn to_string(&self) -> String {
+        self.to_checksum_string()
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 
