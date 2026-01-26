@@ -20,7 +20,7 @@ use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::wordlist::bip39::Language;
 use kobe::{Error, Result};
 
-use crate::extended_key::EthExtendedPrivateKey;
+use crate::extended_key::ExtendedPrivateKey;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -38,26 +38,26 @@ const PBKDF2_ROUNDS: u32 = 2048;
 
 /// BIP-39 Mnemonic phrase for Ethereum.
 #[derive(Clone)]
-pub struct EthMnemonic {
+pub struct Mnemonic {
     /// The entropy bytes (16-32 bytes depending on word count)
     entropy: Vec<u8>,
     /// The language of the mnemonic
     language: Language,
 }
 
-impl Zeroize for EthMnemonic {
+impl Zeroize for Mnemonic {
     fn zeroize(&mut self) {
         self.entropy.zeroize();
     }
 }
 
-impl Drop for EthMnemonic {
+impl Drop for Mnemonic {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl EthMnemonic {
+impl Mnemonic {
     /// Creates a mnemonic from raw entropy bytes (English by default).
     ///
     /// Entropy length must be 16, 20, 24, 28, or 32 bytes.
@@ -237,10 +237,9 @@ impl EthMnemonic {
 
     /// Derive an extended private key from this mnemonic.
     #[cfg(feature = "alloc")]
-    pub fn to_extended_key(&self, passphrase: &str) -> Result<EthExtendedPrivateKey> {
-        use kobe::ExtendedPrivateKey as _;
+    pub fn to_extended_key(&self, passphrase: &str) -> Result<ExtendedPrivateKey> {
         let seed = self.to_seed_bytes(passphrase);
-        EthExtendedPrivateKey::from_seed(&seed)
+        kobe::ExtendedPrivateKey::from_seed(&seed)
     }
 
     /// Get the entropy bytes.
@@ -254,14 +253,14 @@ impl EthMnemonic {
     }
 }
 
-impl core::fmt::Debug for EthMnemonic {
+impl core::fmt::Debug for Mnemonic {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Mnemonic({} words)", self.word_count())
     }
 }
 
 #[cfg(feature = "alloc")]
-impl kobe::Mnemonic for EthMnemonic {
+impl kobe::Mnemonic for Mnemonic {
     fn generate<R: RngCore + CryptoRng>(rng: &mut R, word_count: usize) -> Result<Self> {
         let entropy_bytes = match word_count {
             12 => 16,
@@ -307,7 +306,7 @@ mod tests {
     fn test_mnemonic_from_entropy() {
         // Test vector from BIP-39
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
-        let mnemonic = EthMnemonic::from_entropy(&entropy).unwrap();
+        let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
         let phrase = mnemonic.to_phrase_string();
         assert_eq!(
             phrase,
@@ -318,7 +317,7 @@ mod tests {
     #[test]
     fn test_mnemonic_from_phrase() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
         assert_eq!(
             mnemonic.entropy(),
             hex_literal::hex!("00000000000000000000000000000000")
@@ -328,7 +327,7 @@ mod tests {
     #[test]
     fn test_mnemonic_to_seed() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
         let seed = mnemonic.to_seed_bytes("TREZOR");
 
         // Known test vector
@@ -341,7 +340,7 @@ mod tests {
     #[test]
     fn test_to_extended_key() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
         let xkey = mnemonic.to_extended_key("").unwrap();
 
         // Derive standard Ethereum path
@@ -357,7 +356,7 @@ mod tests {
         // Test generating Chinese mnemonic from same entropy
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
         let mnemonic =
-            EthMnemonic::from_entropy_with_language(&entropy, Language::ChineseSimplified).unwrap();
+            Mnemonic::from_entropy_with_language(&entropy, Language::ChineseSimplified).unwrap();
         let phrase = mnemonic.to_phrase_string();
 
         // Chinese phrase for all-zero entropy
@@ -365,7 +364,7 @@ mod tests {
         assert_eq!(mnemonic.language(), Language::ChineseSimplified);
 
         // Same entropy should produce same seed regardless of language
-        let english_mnemonic = EthMnemonic::from_entropy(&entropy).unwrap();
+        let english_mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
         let chinese_seed = mnemonic.to_seed_bytes("");
         let english_seed = english_mnemonic.to_seed_bytes("");
 
@@ -378,7 +377,7 @@ mod tests {
     fn test_language_detection() {
         // Test auto-detection of English phrase
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
         assert_eq!(mnemonic.language(), Language::English);
     }
 }

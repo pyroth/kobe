@@ -63,19 +63,20 @@ mod private_key;
 mod public_key;
 mod transaction;
 
-pub use address::EthAddress;
-pub use extended_key::EthExtendedPrivateKey;
-pub use extended_public_key::EthExtendedPublicKey;
+pub use address::Address;
+pub use extended_key::ExtendedPrivateKey;
+pub use extended_public_key::ExtendedPublicKey;
 pub use kobe::wordlist::bip39::Language;
-pub use mnemonic::EthMnemonic;
+pub use mnemonic::Mnemonic;
 pub use network::Network;
-pub use private_key::EthPrivateKey;
-pub use public_key::EthPublicKey;
-pub use transaction::{Eip1559Transaction, EthTransaction, EthTxId};
+pub use private_key::PrivateKey;
+pub use public_key::PublicKey;
+pub use transaction::{Eip1559Transaction, Transaction, TxId};
 
-// Re-export kobe core types and traits
+// Re-export kobe core traits with trait suffix for clarity
 pub use kobe::{
-    Address, ExtendedPrivateKey as ExtendedPrivateKeyTrait,
-    ExtendedPublicKey as ExtendedPublicKeyTrait, Mnemonic as MnemonicTrait, PrivateKey, PublicKey,
+    Address as AddressTrait, ExtendedPrivateKey as ExtendedPrivateKeyTrait,
+    ExtendedPublicKey as ExtendedPublicKeyTrait, Mnemonic as MnemonicTrait,
+    PrivateKey as PrivateKeyTrait, PublicKey as PublicKeyTrait,
 };
 pub use kobe::{Error, Result, Signature};

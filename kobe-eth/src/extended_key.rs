@@ -10,9 +10,9 @@ use zeroize::Zeroize;
 
 use kobe::{Error, PrivateKey as _, Result};
 
-use crate::address::EthAddress;
-use crate::private_key::EthPrivateKey;
-use crate::public_key::EthPublicKey;
+use crate::address::Address;
+use crate::private_key::PrivateKey;
+use crate::public_key::PublicKey;
 
 type HmacSha512 = Hmac<Sha512>;
 
@@ -21,9 +21,9 @@ type HmacSha512 = Hmac<Sha512>;
 /// Provides hierarchical deterministic key derivation following the BIP-32 standard.
 /// Keys are automatically zeroized on drop for security.
 #[derive(Clone)]
-pub struct EthExtendedPrivateKey {
+pub struct ExtendedPrivateKey {
     /// The underlying private key
-    private_key: EthPrivateKey,
+    private_key: PrivateKey,
     /// Chain code for key derivation
     chain_code: [u8; 32],
     /// Depth in the derivation tree (0 for master)
@@ -34,7 +34,7 @@ pub struct EthExtendedPrivateKey {
     child_index: u32,
 }
 
-impl Zeroize for EthExtendedPrivateKey {
+impl Zeroize for ExtendedPrivateKey {
     fn zeroize(&mut self) {
         self.private_key.zeroize();
         self.chain_code.zeroize();
@@ -43,14 +43,14 @@ impl Zeroize for EthExtendedPrivateKey {
     }
 }
 
-impl Drop for EthExtendedPrivateKey {
+impl Drop for ExtendedPrivateKey {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl kobe::ExtendedPrivateKey for EthExtendedPrivateKey {
-    type PrivateKey = EthPrivateKey;
+impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
+    type PrivateKey = PrivateKey;
 
     fn from_seed(seed: &[u8]) -> Result<Self> {
         if seed.len() < 16 || seed.len() > 64 {
@@ -66,7 +66,7 @@ impl kobe::ExtendedPrivateKey for EthExtendedPrivateKey {
         let result = mac.finalize().into_bytes();
 
         // First 32 bytes are the private key, last 32 are the chain code
-        let private_key = EthPrivateKey::from_bytes(&result[..32])?;
+        let private_key = PrivateKey::from_bytes(&result[..32])?;
 
         let mut chain_code = [0u8; 32];
         chain_code.copy_from_slice(&result[32..]);
@@ -106,7 +106,7 @@ impl kobe::ExtendedPrivateKey for EthExtendedPrivateKey {
     }
 }
 
-impl EthExtendedPrivateKey {
+impl ExtendedPrivateKey {
     /// Derive a child key at the given index.
     fn derive_child_internal(&self, index: u32, hardened: bool) -> Result<Self> {
         if self.depth == 255 {
@@ -148,7 +148,7 @@ impl EthExtendedPrivateKey {
 
         // Convert scalar back to bytes
         let child_bytes: [u8; 32] = child_scalar.to_bytes().into();
-        let child_private_key = EthPrivateKey::from_bytes(&child_bytes)?;
+        let child_private_key = PrivateKey::from_bytes(&child_bytes)?;
 
         // Compute parent fingerprint (first 4 bytes of hash160 of parent public key)
         let parent_pubkey = kobe::PrivateKey::public_key(&self.private_key);
@@ -216,21 +216,21 @@ impl EthExtendedPrivateKey {
 
     /// Get a reference to the underlying private key.
     #[inline]
-    pub fn private_key_ref(&self) -> &EthPrivateKey {
+    pub fn private_key_ref(&self) -> &PrivateKey {
         &self.private_key
     }
 
     /// Get the corresponding public key.
     #[inline]
     #[must_use]
-    pub fn public_key(&self) -> EthPublicKey {
+    pub fn public_key(&self) -> PublicKey {
         kobe::PrivateKey::public_key(&self.private_key)
     }
 
     /// Get the corresponding address.
     #[inline]
     #[must_use]
-    pub fn address(&self) -> EthAddress {
+    pub fn address(&self) -> Address {
         self.private_key.address()
     }
 
@@ -262,9 +262,9 @@ impl EthExtendedPrivateKey {
     }
 }
 
-impl core::fmt::Debug for EthExtendedPrivateKey {
+impl core::fmt::Debug for ExtendedPrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("EthExtendedPrivateKey")
+        f.debug_struct("ExtendedPrivateKey")
             .field("depth", &self.depth)
             .field("child_index", &self.child_index)
             .field("private_key", &"[REDACTED]")
@@ -282,13 +282,13 @@ mod tests {
 
     #[test]
     fn test_master_key_from_seed() {
-        let xkey = EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xkey = ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
         assert_eq!(xkey.depth(), 0);
     }
 
     #[test]
     fn test_derive_path() {
-        let master = EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
         // Standard Ethereum derivation path
         let derived = master.derive_path_str("m/44'/60'/0'/0/0").unwrap();
         assert_eq!(derived.depth(), 5);
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_hardened_derivation() {
-        let master = EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
         let child = master.derive_child_hardened(44).unwrap();
         assert_eq!(child.depth(), 1);
     }

@@ -9,9 +9,9 @@ use kobe::hash::double_sha256;
 use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, PrivateKey as _, Result, Signature};
 
-use crate::address::{AddressFormat, BtcAddress};
+use crate::address::{Address, AddressFormat};
 use crate::network::Network;
-use crate::public_key::BtcPublicKey;
+use crate::public_key::PublicKey;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -21,12 +21,12 @@ use alloc::string::String;
 /// Provides secure key management with automatic zeroization on drop.
 /// Supports both compressed and uncompressed public key formats.
 #[derive(Clone)]
-pub struct BtcPrivateKey {
+pub struct PrivateKey {
     inner: SigningKey,
     compressed: bool,
 }
 
-impl Zeroize for BtcPrivateKey {
+impl Zeroize for PrivateKey {
     fn zeroize(&mut self) {
         // SigningKey internally zeroizes on drop
         let zeroed = SigningKey::from_slice(&[1u8; 32]).unwrap();
@@ -35,14 +35,14 @@ impl Zeroize for BtcPrivateKey {
     }
 }
 
-impl Drop for BtcPrivateKey {
+impl Drop for PrivateKey {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl kobe::PrivateKey for BtcPrivateKey {
-    type PublicKey = BtcPublicKey;
+impl kobe::PrivateKey for PrivateKey {
+    type PublicKey = PublicKey;
 
     fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
         Ok(Self {
@@ -70,7 +70,7 @@ impl kobe::PrivateKey for BtcPrivateKey {
     }
 
     fn public_key(&self) -> Self::PublicKey {
-        BtcPublicKey::from_signing_key(&self.inner, self.compressed)
+        PublicKey::from_signing_key(&self.inner, self.compressed)
     }
 
     fn sign_prehash(&self, hash: &[u8; 32]) -> Result<Signature> {
@@ -89,7 +89,7 @@ impl kobe::PrivateKey for BtcPrivateKey {
     }
 }
 
-impl BtcPrivateKey {
+impl PrivateKey {
     /// Set whether to use compressed public key.
     pub fn set_compressed(&mut self, compressed: bool) {
         self.compressed = compressed;
@@ -103,8 +103,8 @@ impl BtcPrivateKey {
     }
 
     /// Get the corresponding address.
-    pub fn address(&self, network: Network, format: AddressFormat) -> Result<BtcAddress> {
-        BtcAddress::from_public_key(&self.public_key(), network, format)
+    pub fn address(&self, network: Network, format: AddressFormat) -> Result<Address> {
+        Address::from_public_key(&self.public_key(), network, format)
     }
 
     /// Import from WIF (Wallet Import Format).
@@ -183,18 +183,14 @@ impl BtcPrivateKey {
     }
 }
 
-impl core::fmt::Debug for BtcPrivateKey {
+impl core::fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "BtcPrivateKey([REDACTED], compressed={})",
-            self.compressed
-        )
+        write!(f, "PrivateKey([REDACTED], compressed={})", self.compressed)
     }
 }
 
 #[cfg(feature = "alloc")]
-impl core::str::FromStr for BtcPrivateKey {
+impl core::str::FromStr for PrivateKey {
     type Err = Error;
 
     /// Parse from WIF or hex string.
@@ -274,7 +270,7 @@ mod tests {
     fn test_wif_export() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = PrivateKey::from_bytes(&bytes).unwrap();
         let wif = key.to_wif(Network::Mainnet);
         assert_eq!(wif, "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617");
     }
@@ -282,7 +278,7 @@ mod tests {
     #[test]
     fn test_wif_import_compressed() {
         let wif = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617";
-        let (key, network) = BtcPrivateKey::from_wif(wif).unwrap();
+        let (key, network) = PrivateKey::from_wif(wif).unwrap();
         assert_eq!(network, Network::Mainnet);
         assert!(key.is_compressed());
         assert_eq!(
@@ -294,7 +290,7 @@ mod tests {
     #[test]
     fn test_wif_import_uncompressed() {
         let wif = "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ";
-        let (key, network) = BtcPrivateKey::from_wif(wif).unwrap();
+        let (key, network) = PrivateKey::from_wif(wif).unwrap();
         assert_eq!(network, Network::Mainnet);
         assert!(!key.is_compressed());
     }
@@ -303,16 +299,16 @@ mod tests {
     fn test_wif_roundtrip() {
         let bytes =
             hex_literal::hex!("e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = PrivateKey::from_bytes(&bytes).unwrap();
         let wif = key.to_wif(Network::Mainnet);
-        let (recovered, network) = BtcPrivateKey::from_wif(&wif).unwrap();
+        let (recovered, network) = PrivateKey::from_wif(&wif).unwrap();
         assert_eq!(network, Network::Mainnet);
         assert_eq!(key.to_bytes(), recovered.to_bytes());
     }
 
     #[test]
     fn test_from_str_wif() {
-        let key: BtcPrivateKey = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
+        let key: PrivateKey = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
             .parse()
             .unwrap();
         assert!(key.is_compressed());
@@ -320,7 +316,7 @@ mod tests {
 
     #[test]
     fn test_from_str_hex() {
-        let key: BtcPrivateKey = "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"
+        let key: PrivateKey = "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"
             .parse()
             .unwrap();
         assert_eq!(
@@ -333,10 +329,10 @@ mod tests {
     fn test_testnet_wif() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = PrivateKey::from_bytes(&bytes).unwrap();
         let wif = key.to_wif(Network::Testnet);
         assert!(wif.starts_with('c'));
-        let (recovered, network) = BtcPrivateKey::from_wif(&wif).unwrap();
+        let (recovered, network) = PrivateKey::from_wif(&wif).unwrap();
         assert_eq!(network, Network::Testnet);
         assert_eq!(key.to_bytes(), recovered.to_bytes());
     }

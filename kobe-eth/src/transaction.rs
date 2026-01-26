@@ -2,9 +2,9 @@
 //!
 //! Supports legacy (EIP-155) and EIP-1559 transactions.
 
-use crate::address::EthAddress;
+use crate::address::Address;
 use crate::network::Network;
-use crate::private_key::EthPrivateKey;
+use crate::private_key::PrivateKey;
 use alloc::vec::Vec;
 use kobe::hash::keccak256;
 use kobe::transaction::{Eip1559TxParams, EthTxParams};
@@ -12,9 +12,9 @@ use kobe::{Error, Result};
 
 /// Ethereum transaction ID (32-byte hash).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EthTxId([u8; 32]);
+pub struct TxId([u8; 32]);
 
-impl EthTxId {
+impl TxId {
     /// Create from bytes.
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         Self(bytes)
@@ -26,13 +26,13 @@ impl EthTxId {
     }
 }
 
-impl kobe::TransactionId for EthTxId {
+impl kobe::TransactionId for TxId {
     fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl core::fmt::Display for EthTxId {
+impl core::fmt::Display for TxId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "0x")?;
         for byte in &self.0 {
@@ -44,7 +44,7 @@ impl core::fmt::Display for EthTxId {
 
 /// Legacy Ethereum transaction (EIP-155).
 #[derive(Clone, Debug)]
-pub struct EthTransaction {
+pub struct Transaction {
     /// Transaction nonce.
     pub nonce: u64,
     /// Gas price in wei.
@@ -67,7 +67,7 @@ pub struct EthTransaction {
     pub s: Option<[u8; 32]>,
 }
 
-impl EthTransaction {
+impl Transaction {
     /// Create a new unsigned transaction.
     pub fn new(params: EthTxParams) -> Self {
         Self {
@@ -88,9 +88,9 @@ impl EthTransaction {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use kobe_eth::{EthTransaction, Network, EthAddress};
+    /// use kobe_eth::{Transaction, Network, Address};
     ///
-    /// let tx = EthTransaction::transfer_on(
+    /// let tx = Transaction::transfer_on(
     ///     Network::Mainnet,
     ///     recipient,
     ///     1_000_000_000_000_000_000, // 1 ETH
@@ -100,7 +100,7 @@ impl EthTransaction {
     /// ```
     pub fn transfer_on(
         network: Network,
-        to: EthAddress,
+        to: Address,
         value: u128,
         nonce: u64,
         gas_price: u128,
@@ -122,7 +122,7 @@ impl EthTransaction {
     /// Create a simple ETH transfer transaction (legacy API with raw chain_id).
     #[deprecated(since = "0.2.0", note = "Use transfer_on() with Network type instead")]
     pub fn transfer(
-        to: EthAddress,
+        to: Address,
         value: u128,
         nonce: u64,
         gas_price: u128,
@@ -153,7 +153,7 @@ impl EthTransaction {
     }
 
     /// Sign the transaction with a private key.
-    pub fn sign(&self, private_key: &EthPrivateKey) -> Result<Self> {
+    pub fn sign(&self, private_key: &PrivateKey) -> Result<Self> {
         if self.is_signed() {
             return Ok(self.clone());
         }
@@ -185,8 +185,8 @@ impl EthTransaction {
     }
 
     /// Get the transaction hash.
-    pub fn tx_hash(&self) -> EthTxId {
-        EthTxId(keccak256(&self.to_bytes()))
+    pub fn tx_hash(&self) -> TxId {
+        TxId(keccak256(&self.to_bytes()))
     }
 
     /// RLP encode for signing (unsigned transaction with chain_id).
@@ -244,7 +244,7 @@ impl EthTransaction {
     }
 
     /// Get the sender address (requires signature).
-    pub fn sender(&self) -> Result<EthAddress> {
+    pub fn sender(&self) -> Result<Address> {
         if !self.is_signed() {
             return Err(Error::msg("Transaction not signed"));
         }
@@ -258,9 +258,9 @@ impl EthTransaction {
         };
 
         let sig = kobe::Signature::new(self.r.unwrap(), self.s.unwrap(), recovery_id);
-        let pubkey = crate::public_key::EthPublicKey::recover_from_prehash(&hash, &sig)?;
+        let pubkey = crate::public_key::PublicKey::recover_from_prehash(&hash, &sig)?;
 
-        Ok(EthAddress::from_public_key(&pubkey))
+        Ok(Address::from_public_key(&pubkey))
     }
 }
 
@@ -316,7 +316,7 @@ impl Eip1559Transaction {
     ///
     /// # Example
     /// ```rust,ignore
-    /// use kobe_eth::{Eip1559Transaction, Network, EthAddress};
+    /// use kobe_eth::{Eip1559Transaction, Network, Address};
     ///
     /// let tx = Eip1559Transaction::transfer_on(
     ///     Network::Mainnet,
@@ -329,7 +329,7 @@ impl Eip1559Transaction {
     /// ```
     pub fn transfer_on(
         network: Network,
-        to: EthAddress,
+        to: Address,
         value: u128,
         nonce: u64,
         max_priority_fee_per_gas: u128,
@@ -362,7 +362,7 @@ impl Eip1559Transaction {
     }
 
     /// Sign the transaction with a private key.
-    pub fn sign(&self, private_key: &EthPrivateKey) -> Result<Self> {
+    pub fn sign(&self, private_key: &PrivateKey) -> Result<Self> {
         if self.is_signed() {
             return Ok(self.clone());
         }
@@ -395,8 +395,8 @@ impl Eip1559Transaction {
     }
 
     /// Get the transaction hash.
-    pub fn tx_hash(&self) -> EthTxId {
-        EthTxId(keccak256(&self.to_bytes()))
+    pub fn tx_hash(&self) -> TxId {
+        TxId(keccak256(&self.to_bytes()))
     }
 
     /// RLP encode for signing.
@@ -569,11 +569,11 @@ fn trim_leading_zeros(bytes: &[u8]) -> &[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kobe::PrivateKey;
+    use kobe::PrivateKey as PrivateKeyTrait;
 
     #[test]
     fn test_create_legacy_tx() {
-        let tx = EthTransaction::new(EthTxParams::transfer(
+        let tx = Transaction::new(EthTxParams::transfer(
             [1u8; 20],
             1_000_000_000_000_000_000,
             0,
@@ -626,7 +626,7 @@ mod tests {
 
     #[test]
     fn test_tx_hash_display() {
-        let hash = EthTxId([
+        let hash = TxId([
             0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
             0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
             0x1d, 0x1e, 0x1f, 0x20,
@@ -639,9 +639,9 @@ mod tests {
     fn test_sign_legacy_tx() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = EthPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
 
-        let tx = EthTransaction::new(EthTxParams::transfer(
+        let tx = Transaction::new(EthTxParams::transfer(
             [1u8; 20],
             1_000_000_000_000_000_000,
             0,
@@ -658,7 +658,7 @@ mod tests {
     fn test_sign_eip1559_tx() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = EthPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
 
         let tx = Eip1559Transaction::new(Eip1559TxParams::transfer(
             [1u8; 20],
@@ -675,7 +675,7 @@ mod tests {
 
     #[test]
     fn test_serialize_to_hex() {
-        let tx = EthTransaction::new(EthTxParams::transfer([1u8; 20], 0, 0, 20_000_000_000, 1));
+        let tx = Transaction::new(EthTxParams::transfer([1u8; 20], 0, 0, 20_000_000_000, 1));
 
         let hex = tx.to_hex();
         assert!(hex.starts_with("0x"));
@@ -685,10 +685,10 @@ mod tests {
     fn test_transfer_on_network() {
         use crate::network::Network;
 
-        let recipient = EthAddress::from_bytes([1u8; 20]);
+        let recipient = Address::from_bytes([1u8; 20]);
 
         // Create mainnet transaction
-        let tx = EthTransaction::transfer_on(
+        let tx = Transaction::transfer_on(
             Network::Mainnet,
             recipient.clone(),
             1_000_000_000_000_000_000,
@@ -699,7 +699,7 @@ mod tests {
         assert_eq!(tx.network(), Some(Network::Mainnet));
 
         // Create BSC transaction
-        let bsc_tx = EthTransaction::transfer_on(
+        let bsc_tx = Transaction::transfer_on(
             Network::BinanceSmartChain,
             recipient.clone(),
             1_000_000_000_000_000_000,
@@ -710,7 +710,7 @@ mod tests {
         assert_eq!(bsc_tx.network(), Some(Network::BinanceSmartChain));
 
         // Create Polygon transaction
-        let polygon_tx = EthTransaction::transfer_on(
+        let polygon_tx = Transaction::transfer_on(
             Network::Polygon,
             recipient,
             1_000_000_000_000_000_000,
@@ -724,7 +724,7 @@ mod tests {
     fn test_eip1559_transfer_on_network() {
         use crate::network::Network;
 
-        let recipient = EthAddress::from_bytes([1u8; 20]);
+        let recipient = Address::from_bytes([1u8; 20]);
 
         let tx = Eip1559Transaction::transfer_on(
             Network::Mainnet,

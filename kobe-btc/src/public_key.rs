@@ -6,7 +6,7 @@ use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
 
 use kobe::{Error, PublicKey as _, Result, Signature};
 
-use crate::address::{AddressFormat, BtcAddress};
+use crate::address::{Address, AddressFormat};
 use crate::network::Network;
 
 /// Bitcoin public key based on secp256k1.
@@ -14,12 +14,12 @@ use crate::network::Network;
 /// Supports both compressed and uncompressed formats for signature verification
 /// and address derivation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BtcPublicKey {
+pub struct PublicKey {
     inner: VerifyingKey,
     compressed: bool,
 }
 
-impl BtcPublicKey {
+impl PublicKey {
     /// Create from a signing key.
     pub(crate) fn from_signing_key(key: &SigningKey, compressed: bool) -> Self {
         Self {
@@ -76,8 +76,8 @@ impl BtcPublicKey {
     }
 }
 
-impl kobe::PublicKey for BtcPublicKey {
-    type Address = BtcAddress;
+impl kobe::PublicKey for PublicKey {
+    type Address = Address;
 
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         // Accept both compressed (33) and uncompressed (65) formats
@@ -104,7 +104,7 @@ impl kobe::PublicKey for BtcPublicKey {
 
     fn to_address(&self) -> Self::Address {
         // Default to mainnet P2PKH for trait compatibility
-        BtcAddress::from_public_key(self, Network::Mainnet, AddressFormat::P2PKH)
+        Address::from_public_key(self, Network::Mainnet, AddressFormat::P2PKH)
             .expect("P2PKH address creation should not fail")
     }
 
@@ -122,7 +122,7 @@ impl kobe::PublicKey for BtcPublicKey {
     }
 }
 
-impl BtcPublicKey {
+impl PublicKey {
     /// Get the x-only public key (32 bytes) for Taproot.
     ///
     /// This returns only the x-coordinate of the public key point,
@@ -161,8 +161,8 @@ impl BtcPublicKey {
     }
 
     /// Derive a Bitcoin address.
-    pub fn to_address(&self, network: Network, format: AddressFormat) -> Result<BtcAddress> {
-        BtcAddress::from_public_key(self, network, format)
+    pub fn to_address(&self, network: Network, format: AddressFormat) -> Result<Address> {
+        Address::from_public_key(self, network, format)
     }
 
     /// Verify a signature against a message hash.
@@ -208,20 +208,20 @@ impl BtcPublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::BtcPrivateKey;
-    use kobe::PrivateKey;
+    use crate::PrivateKey;
+    use kobe::PrivateKey as PrivateKeyTrait;
 
     #[test]
     fn test_public_key_derivation() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let private_key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let private_key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let public_key = private_key.public_key();
 
         let compressed = public_key.to_compressed_bytes();
         assert_eq!(compressed.len(), 33);
 
-        let recovered = BtcPublicKey::from_compressed_bytes(&compressed).unwrap();
+        let recovered = PublicKey::from_compressed_bytes(&compressed).unwrap();
         assert_eq!(
             public_key.to_compressed_bytes(),
             recovered.to_compressed_bytes()

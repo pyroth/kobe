@@ -6,23 +6,23 @@ use sha3::{Digest, Keccak256};
 
 use kobe::{Error, Result};
 
-use crate::public_key::EthPublicKey;
+use crate::public_key::PublicKey;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
 /// Ethereum address (20 bytes).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct EthAddress([u8; 20]);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Address([u8; 20]);
 
-impl EthAddress {
+impl Address {
     /// Create from raw 20-byte address.
     pub const fn from_bytes(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 
     /// Create from a public key.
-    pub fn from_public_key(public_key: &EthPublicKey) -> Self {
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
         let raw = public_key.to_raw_bytes();
         let hash = Keccak256::digest(raw);
         let mut addr = [0u8; 20];
@@ -77,17 +77,8 @@ fn to_hex_lower(bytes: &[u8]) -> String {
     result
 }
 
-impl core::fmt::Debug for EthAddress {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "EthAddress(0x")?;
-        for byte in &self.0 {
-            write!(f, "{:02x}", byte)?;
-        }
-        write!(f, ")")
-    }
-}
 
-impl core::fmt::Display for EthAddress {
+impl core::fmt::Display for Address {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[cfg(feature = "alloc")]
         {
@@ -104,7 +95,7 @@ impl core::fmt::Display for EthAddress {
     }
 }
 
-impl core::str::FromStr for EthAddress {
+impl core::str::FromStr for Address {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
@@ -112,7 +103,7 @@ impl core::str::FromStr for EthAddress {
     }
 }
 
-impl kobe::Address for EthAddress {
+impl kobe::Address for Address {
     #[cfg(feature = "alloc")]
     fn from_str(s: &str) -> Result<Self> {
         let s = s.strip_prefix("0x").unwrap_or(s);
@@ -145,20 +136,20 @@ impl kobe::Address for EthAddress {
     }
 }
 
-impl AsRef<[u8]> for EthAddress {
+impl AsRef<[u8]> for Address {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl From<[u8; 20]> for EthAddress {
+impl From<[u8; 20]> for Address {
     fn from(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 }
 
-impl From<EthAddress> for [u8; 20] {
-    fn from(addr: EthAddress) -> Self {
+impl From<Address> for [u8; 20] {
+    fn from(addr: Address) -> Self {
         addr.0
     }
 }
@@ -169,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-        let addr: EthAddress = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+        let addr: Address = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
             .parse()
             .unwrap();
         let expected = hex_literal::hex!("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
@@ -178,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_checksum() {
-        let addr: EthAddress = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        let addr: Address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
             .parse()
             .unwrap();
         assert_eq!(
@@ -189,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let addr: EthAddress = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        let addr: Address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
             .parse()
             .unwrap();
         let displayed = addr.to_string();

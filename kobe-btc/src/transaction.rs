@@ -3,7 +3,7 @@
 //! Supports legacy (P2PKH) and SegWit (P2WPKH) transactions.
 
 use crate::network::Network;
-use crate::private_key::BtcPrivateKey;
+use crate::private_key::PrivateKey;
 use alloc::vec::Vec;
 use kobe::hash::double_sha256;
 use kobe::transaction::{SigHashType, TxInput, TxOutput};
@@ -11,9 +11,9 @@ use kobe::{Error, Result};
 
 /// Bitcoin transaction ID (32-byte hash).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct BtcTxId([u8; 32]);
+pub struct TxId([u8; 32]);
 
-impl BtcTxId {
+impl TxId {
     /// Create from bytes.
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         Self(bytes)
@@ -25,13 +25,13 @@ impl BtcTxId {
     }
 }
 
-impl kobe::TransactionId for BtcTxId {
+impl kobe::TransactionId for TxId {
     fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl core::fmt::Display for BtcTxId {
+impl core::fmt::Display for TxId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         // Bitcoin displays txid in reverse byte order
         for byte in self.0.iter().rev() {
@@ -43,7 +43,7 @@ impl core::fmt::Display for BtcTxId {
 
 /// Bitcoin transaction.
 #[derive(Clone, Debug)]
-pub struct BtcTransaction {
+pub struct Transaction {
     /// Transaction version.
     pub version: i32,
     /// Transaction inputs.
@@ -58,7 +58,7 @@ pub struct BtcTransaction {
     pub segwit: bool,
 }
 
-impl BtcTransaction {
+impl Transaction {
     /// Create a new unsigned transaction.
     pub fn new(network: Network) -> Self {
         Self {
@@ -216,7 +216,7 @@ impl BtcTransaction {
     pub fn sign_input(
         &mut self,
         input_index: usize,
-        private_key: &BtcPrivateKey,
+        private_key: &PrivateKey,
         script_code: &[u8],
         sighash_type: SigHashType,
     ) -> Result<()> {
@@ -296,7 +296,7 @@ impl BtcTransaction {
     }
 
     /// Get the transaction ID.
-    pub fn txid(&self) -> BtcTxId {
+    pub fn txid(&self) -> TxId {
         let mut data = Vec::new();
 
         // Version
@@ -323,12 +323,12 @@ impl BtcTransaction {
         // Lock time
         data.extend_from_slice(&self.lock_time.to_le_bytes());
 
-        BtcTxId(double_sha256(&data))
+        TxId(double_sha256(&data))
     }
 
     /// Get the witness transaction ID (wtxid).
-    pub fn wtxid(&self) -> BtcTxId {
-        BtcTxId(double_sha256(&self.to_bytes()))
+    pub fn wtxid(&self) -> TxId {
+        TxId(double_sha256(&self.to_bytes()))
     }
 
     /// Check if any input has witness data.
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_create_transaction() {
-        let tx = BtcTransaction::new(Network::Mainnet);
+        let tx = Transaction::new(Network::Mainnet);
         assert_eq!(tx.version, 2);
         assert!(tx.inputs.is_empty());
         assert!(tx.outputs.is_empty());
@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn test_add_input_output() {
-        let mut tx = BtcTransaction::new(Network::Mainnet);
+        let mut tx = Transaction::new(Network::Mainnet);
 
         let input = TxInput::new([0u8; 32], 0, Some(100000));
         tx.add_input(input);
@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_txid_display() {
-        let txid = BtcTxId([
+        let txid = TxId([
             0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
             0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
             0x1d, 0x1e, 0x1f, 0x20,
@@ -506,7 +506,7 @@ mod tests {
 
     #[test]
     fn test_serialize_empty_tx() {
-        let tx = BtcTransaction::new(Network::Mainnet);
+        let tx = Transaction::new(Network::Mainnet);
         let bytes = tx.to_bytes();
         // version (4) + input count (1) + output count (1) + locktime (4) = 10
         assert_eq!(bytes.len(), 10);
@@ -514,7 +514,7 @@ mod tests {
 
     #[test]
     fn test_vsize_legacy() {
-        let mut tx = BtcTransaction::new(Network::Mainnet);
+        let mut tx = Transaction::new(Network::Mainnet);
         tx.add_input(TxInput::new([0u8; 32], 0, None));
         tx.add_output(TxOutput::new(1000, p2pkh_script(&[0u8; 20])));
 

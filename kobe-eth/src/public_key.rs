@@ -2,27 +2,25 @@
 //!
 //! Implements `kobe::PublicKey` trait for unified wallet interface.
 
-use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
+use k256::ecdsa::{VerifyingKey, signature::hazmat::PrehashVerifier};
 
 use kobe::{Error, Result, Signature};
 
-use crate::address::EthAddress;
+use crate::address::Address;
 use crate::eip191;
 
 /// Ethereum public key based on secp256k1.
 ///
-/// Provides signature verification and address derivation for Ethereum.
+/// Supports compressed and uncompressed formats.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EthPublicKey {
+pub struct PublicKey {
     inner: VerifyingKey,
 }
 
-impl EthPublicKey {
-    /// Create from a signing key.
-    pub(crate) fn from_signing_key(key: &SigningKey) -> Self {
-        Self {
-            inner: *key.verifying_key(),
-        }
+impl PublicKey {
+    /// Create from a verifying key.
+    pub(crate) fn from_verifying_key(key: VerifyingKey) -> Self {
+        Self { inner: key }
     }
 
     /// Get the raw 64-byte public key (without 0x04 prefix).
@@ -36,8 +34,8 @@ impl EthPublicKey {
     }
 }
 
-impl kobe::PublicKey for EthPublicKey {
-    type Address = EthAddress;
+impl kobe::PublicKey for PublicKey {
+    type Address = Address;
 
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let inner = VerifyingKey::from_sec1_bytes(bytes).map_err(|_| Error::InvalidPublicKey)?;
@@ -59,7 +57,7 @@ impl kobe::PublicKey for EthPublicKey {
     }
 
     fn to_address(&self) -> Self::Address {
-        EthAddress::from_public_key(self)
+        Address::from_public_key(self)
     }
 
     fn verify(&self, hash: &[u8; 32], signature: &Signature) -> Result<()> {
@@ -76,7 +74,7 @@ impl kobe::PublicKey for EthPublicKey {
     }
 }
 
-impl EthPublicKey {
+impl PublicKey {
     /// Recover public key from signature and message hash.
     ///
     /// # Errors
@@ -101,7 +99,7 @@ impl EthPublicKey {
 
     /// Recover public key from an EIP-191 personal signed message.
     ///
-    /// This is the inverse of `EthPrivateKey::sign_message`.
+    /// This is the inverse of `PrivateKey::sign_message`.
     ///
     /// # Errors
     ///
@@ -115,55 +113,55 @@ impl EthPublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::EthPrivateKey;
-    use kobe::{PrivateKey, PublicKey};
+    use crate::private_key::PrivateKey;
+    use kobe::PrivateKey as PrivateKeyTrait;
 
     #[test]
     fn test_public_key_derivation() {
-        let private_key: EthPrivateKey =
+        let private_key: PrivateKey =
             "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
                 .parse()
                 .unwrap();
-        let public_key = private_key.public_key();
-        let compressed = public_key.to_bytes();
+        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
+        let compressed = kobe::PublicKey::to_bytes(&public_key);
         assert_eq!(compressed.len(), 33);
 
-        let recovered = EthPublicKey::from_bytes(&compressed).unwrap();
+        let recovered = <PublicKey as kobe::PublicKey>::from_bytes(&compressed).unwrap();
         assert_eq!(public_key, recovered);
     }
 
     #[test]
     fn test_sign_and_verify() {
-        let private_key: EthPrivateKey =
+        let private_key: PrivateKey =
             "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
                 .parse()
                 .unwrap();
-        let public_key = private_key.public_key();
+        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
 
         let hash = [0u8; 32];
-        let signature = private_key.sign_prehash(&hash).unwrap();
+        let signature = <PrivateKey as PrivateKeyTrait>::sign_prehash(&private_key, &hash).unwrap();
 
-        public_key.verify(&hash, &signature).unwrap();
+        kobe::PublicKey::verify(&public_key, &hash, &signature).unwrap();
     }
 
     #[test]
     fn test_recover() {
-        let private_key: EthPrivateKey =
+        let private_key: PrivateKey =
             "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
                 .parse()
                 .unwrap();
-        let public_key = private_key.public_key();
+        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
 
         let hash = [1u8; 32];
-        let signature = private_key.sign_prehash(&hash).unwrap();
+        let signature = <PrivateKey as PrivateKeyTrait>::sign_prehash(&private_key, &hash).unwrap();
 
-        let recovered = EthPublicKey::recover_from_prehash(&hash, &signature).unwrap();
+        let recovered = PublicKey::recover_from_prehash(&hash, &signature).unwrap();
         assert_eq!(public_key, recovered);
     }
 
     #[test]
     fn test_recover_from_message() {
-        let private_key: EthPrivateKey =
+        let private_key: PrivateKey =
             "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
                 .parse()
                 .unwrap();
@@ -173,8 +171,8 @@ mod tests {
         let signature = private_key.sign_message(message).unwrap();
 
         // Recover public key from message signature
-        let recovered = EthPublicKey::recover_from_message(message, &signature).unwrap();
-        let recovered_address = recovered.to_address();
+        let recovered = PublicKey::recover_from_message(message, &signature).unwrap();
+        let recovered_address = kobe::PublicKey::to_address(&recovered);
 
         assert_eq!(expected_address, recovered_address);
     }

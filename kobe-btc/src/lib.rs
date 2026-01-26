@@ -63,18 +63,19 @@ mod private_key;
 mod public_key;
 mod transaction;
 
-pub use address::{AddressFormat, BtcAddress};
-pub use extended_key::{BtcExtendedPrivateKey, ChildIndex};
-pub use extended_public_key::BtcExtendedPublicKey;
-pub use mnemonic::BtcMnemonic;
+pub use address::{Address, AddressFormat};
+pub use extended_key::{ChildIndex, ExtendedPrivateKey};
+pub use extended_public_key::ExtendedPublicKey;
+pub use mnemonic::Mnemonic;
 pub use network::Network;
-pub use private_key::BtcPrivateKey;
-pub use public_key::BtcPublicKey;
-pub use transaction::{BtcTransaction, BtcTxId, p2pkh_script, p2wpkh_script};
+pub use private_key::PrivateKey;
+pub use public_key::PublicKey;
+pub use transaction::{Transaction, TxId, p2pkh_script, p2wpkh_script};
 
-// Re-export kobe core types and traits
+// Re-export kobe core traits with trait suffix for clarity
 pub use kobe::{
-    Address, ExtendedPrivateKey as ExtendedPrivateKeyTrait,
-    ExtendedPublicKey as ExtendedPublicKeyTrait, Mnemonic as MnemonicTrait, PrivateKey, PublicKey,
+    Address as AddressTrait, ExtendedPrivateKey as ExtendedPrivateKeyTrait,
+    ExtendedPublicKey as ExtendedPublicKeyTrait, Mnemonic as MnemonicTrait,
+    PrivateKey as PrivateKeyTrait, PublicKey as PublicKeyTrait,
 };
 pub use kobe::{Error, Result, Signature};

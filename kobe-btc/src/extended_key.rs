@@ -11,10 +11,10 @@ use zeroize::Zeroize;
 pub use kobe::ChildIndex;
 use kobe::{Error, PrivateKey as _, Result};
 
-use crate::address::{AddressFormat, BtcAddress};
+use crate::address::{Address, AddressFormat};
 use crate::network::Network;
-use crate::private_key::BtcPrivateKey;
-use crate::public_key::BtcPublicKey;
+use crate::private_key::PrivateKey;
+use crate::public_key::PublicKey;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -28,9 +28,9 @@ type HmacSha512 = Hmac<Sha512>;
 /// Provides hierarchical deterministic key derivation following the BIP-32 standard.
 /// Keys are automatically zeroized on drop for security.
 #[derive(Clone)]
-pub struct BtcExtendedPrivateKey {
+pub struct ExtendedPrivateKey {
     /// The underlying private key
-    private_key: BtcPrivateKey,
+    private_key: PrivateKey,
     /// Chain code for key derivation
     chain_code: [u8; 32],
     /// Depth in the derivation tree (0 for master)
@@ -43,7 +43,7 @@ pub struct BtcExtendedPrivateKey {
     network: Network,
 }
 
-impl Zeroize for BtcExtendedPrivateKey {
+impl Zeroize for ExtendedPrivateKey {
     fn zeroize(&mut self) {
         self.private_key.zeroize();
         self.chain_code.zeroize();
@@ -52,14 +52,14 @@ impl Zeroize for BtcExtendedPrivateKey {
     }
 }
 
-impl Drop for BtcExtendedPrivateKey {
+impl Drop for ExtendedPrivateKey {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl kobe::ExtendedPrivateKey for BtcExtendedPrivateKey {
-    type PrivateKey = BtcPrivateKey;
+impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
+    type PrivateKey = PrivateKey;
 
     fn from_seed(seed: &[u8]) -> Result<Self> {
         // Default to mainnet for trait implementation
@@ -92,7 +92,7 @@ impl kobe::ExtendedPrivateKey for BtcExtendedPrivateKey {
     }
 }
 
-impl BtcExtendedPrivateKey {
+impl ExtendedPrivateKey {
     /// Creates a master extended private key from a seed.
     ///
     /// # Arguments
@@ -118,7 +118,7 @@ impl BtcExtendedPrivateKey {
         let result = mac.finalize().into_bytes();
 
         // First 32 bytes are the private key, last 32 are the chain code
-        let private_key = BtcPrivateKey::from_bytes(&result[..32])?;
+        let private_key = PrivateKey::from_bytes(&result[..32])?;
 
         let mut chain_code = [0u8; 32];
         chain_code.copy_from_slice(&result[32..]);
@@ -179,7 +179,7 @@ impl BtcExtendedPrivateKey {
 
         // Convert scalar back to bytes
         let child_bytes: [u8; 32] = child_scalar.to_bytes().into();
-        let child_private_key = BtcPrivateKey::from_bytes(&child_bytes)?;
+        let child_private_key = PrivateKey::from_bytes(&child_bytes)?;
 
         // Compute parent fingerprint (first 4 bytes of hash160 of parent public key)
         let parent_pubkey = self.private_key.public_key();
@@ -255,14 +255,14 @@ impl BtcExtendedPrivateKey {
 
     /// Get a reference to the underlying private key.
     #[inline]
-    pub fn private_key_ref(&self) -> &BtcPrivateKey {
+    pub fn private_key_ref(&self) -> &PrivateKey {
         &self.private_key
     }
 
     /// Get the corresponding public key.
     #[inline]
     #[must_use]
-    pub fn public_key(&self) -> BtcPublicKey {
+    pub fn public_key(&self) -> PublicKey {
         kobe::PrivateKey::public_key(&self.private_key)
     }
 
@@ -301,7 +301,7 @@ impl BtcExtendedPrivateKey {
     }
 
     /// Derive an address.
-    pub fn address(&self, format: AddressFormat) -> Result<BtcAddress> {
+    pub fn address(&self, format: AddressFormat) -> Result<Address> {
         self.private_key.address(self.network, format)
     }
 
@@ -391,7 +391,7 @@ impl BtcExtendedPrivateKey {
         if decoded[45] != 0x00 {
             return Err(Error::msg("invalid private key prefix"));
         }
-        let private_key = BtcPrivateKey::from_bytes(&decoded[46..78])?;
+        let private_key = PrivateKey::from_bytes(&decoded[46..78])?;
 
         Ok(Self {
             private_key,
@@ -404,9 +404,9 @@ impl BtcExtendedPrivateKey {
     }
 }
 
-impl core::fmt::Debug for BtcExtendedPrivateKey {
+impl core::fmt::Debug for ExtendedPrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("BtcExtendedPrivateKey")
+        f.debug_struct("ExtendedPrivateKey")
             .field("depth", &self.depth)
             .field("child_index", &self.child_index)
             .field("network", &self.network)
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn test_master_key_from_seed() {
         let xkey =
-            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(xkey.depth(), 0);
 
         let xprv = xkey.to_xprv();
@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn test_bip32_vector1_chain_m() {
         let xkey =
-            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(
             xkey.to_xprv(),
             "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
@@ -446,7 +446,7 @@ mod tests {
     #[test]
     fn test_bip32_vector1_chain_m_0h() {
         let master =
-            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let child = master.derive_child_index(ChildIndex::Hardened(0)).unwrap();
         assert_eq!(
             child.to_xprv(),
@@ -457,7 +457,7 @@ mod tests {
     #[test]
     fn test_derive_path() {
         let master =
-            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let derived = master.derive_path_str("m/0'").unwrap();
         assert_eq!(derived.depth(), 1);
 
@@ -468,16 +468,16 @@ mod tests {
     #[test]
     fn test_xprv_roundtrip() {
         let master =
-            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xprv = master.to_xprv();
-        let recovered = BtcExtendedPrivateKey::from_xprv(&xprv).unwrap();
+        let recovered = ExtendedPrivateKey::from_xprv(&xprv).unwrap();
         assert_eq!(master.to_xprv(), recovered.to_xprv());
     }
 
     #[test]
     fn test_testnet_tprv() {
         let xkey =
-            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
         let tprv = xkey.to_xprv();
         assert!(tprv.starts_with("tprv"));
     }

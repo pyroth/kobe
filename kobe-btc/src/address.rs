@@ -7,7 +7,7 @@ use kobe::hash::double_sha256;
 use kobe::{Error, Result};
 
 use crate::network::Network;
-use crate::public_key::BtcPublicKey;
+use crate::public_key::PublicKey;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -33,7 +33,7 @@ pub enum AddressFormat {
 
 /// Bitcoin address.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct BtcAddress {
+pub struct Address {
     /// The address data (hash160 for most formats, 32 bytes for taproot)
     data: [u8; 32],
     /// Length of valid data
@@ -44,7 +44,7 @@ pub struct BtcAddress {
     format: AddressFormat,
 }
 
-impl BtcAddress {
+impl Address {
     /// Creates an address from a public key in the specified format.
     ///
     /// # Example
@@ -53,7 +53,7 @@ impl BtcAddress {
     /// println!("{}", addr); // bc1q...
     /// ```
     pub fn from_public_key(
-        public_key: &BtcPublicKey,
+        public_key: &PublicKey,
         network: Network,
         format: AddressFormat,
     ) -> Result<Self> {
@@ -191,7 +191,7 @@ impl BtcAddress {
     }
 }
 
-impl core::fmt::Display for BtcAddress {
+impl core::fmt::Display for Address {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[cfg(feature = "alloc")]
         {
@@ -213,7 +213,7 @@ impl core::fmt::Display for BtcAddress {
 }
 
 #[cfg(feature = "alloc")]
-impl core::str::FromStr for BtcAddress {
+impl core::str::FromStr for Address {
     type Err = Error;
 
     /// Parse a Bitcoin address from string.
@@ -233,7 +233,7 @@ impl core::str::FromStr for BtcAddress {
 }
 
 #[cfg(feature = "alloc")]
-impl BtcAddress {
+impl Address {
     /// Parse from Base58Check encoded address.
     fn from_base58check(s: &str) -> Result<Self> {
         let decoded = bs58::decode(s)
@@ -310,7 +310,7 @@ impl BtcAddress {
     }
 }
 
-impl kobe::Address for BtcAddress {
+impl kobe::Address for Address {
     #[cfg(feature = "alloc")]
     fn from_str(s: &str) -> Result<Self> {
         <Self as core::str::FromStr>::from_str(s)
@@ -330,14 +330,14 @@ impl kobe::Address for BtcAddress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::BtcPrivateKey;
-    use kobe::PrivateKey;
+    use crate::PrivateKey;
+    use kobe::PrivateKey as PrivateKeyTrait;
 
     #[test]
     fn test_p2pkh_address() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key.address(Network::Mainnet, AddressFormat::P2PKH).unwrap();
         assert_eq!(addr.to_string(), "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK");
     }
@@ -346,7 +346,7 @@ mod tests {
     fn test_p2wpkh_address() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key
             .address(Network::Mainnet, AddressFormat::P2WPKH)
             .unwrap();
@@ -358,7 +358,7 @@ mod tests {
     fn test_p2sh_p2wpkh_address() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key
             .address(Network::Mainnet, AddressFormat::P2SHP2WPKH)
             .unwrap();
@@ -368,14 +368,14 @@ mod tests {
 
     #[test]
     fn test_parse_p2pkh_address() {
-        let addr: BtcAddress = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK".parse().unwrap();
+        let addr: Address = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK".parse().unwrap();
         assert_eq!(addr.network(), Network::Mainnet);
         assert_eq!(addr.format(), AddressFormat::P2PKH);
     }
 
     #[test]
     fn test_parse_p2sh_address() {
-        let addr: BtcAddress = "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy".parse().unwrap();
+        let addr: Address = "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy".parse().unwrap();
         assert_eq!(addr.network(), Network::Mainnet);
         assert_eq!(addr.format(), AddressFormat::P2SH);
     }
@@ -385,14 +385,14 @@ mod tests {
         // Generate an address and test roundtrip parsing
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key
             .address(Network::Mainnet, AddressFormat::P2WPKH)
             .unwrap();
         let addr_str = addr.to_string();
 
         // Parse it back
-        let parsed: BtcAddress = addr_str.parse().unwrap();
+        let parsed: Address = addr_str.parse().unwrap();
         assert_eq!(parsed.network(), Network::Mainnet);
         assert_eq!(parsed.format(), AddressFormat::P2WPKH);
         assert_eq!(parsed.to_string(), addr_str);
@@ -401,7 +401,7 @@ mod tests {
     #[test]
     fn test_address_roundtrip_p2pkh() {
         let original = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK";
-        let addr: BtcAddress = original.parse().unwrap();
+        let addr: Address = original.parse().unwrap();
         assert_eq!(addr.to_string(), original);
     }
 
@@ -409,7 +409,7 @@ mod tests {
     fn test_testnet_address() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key.address(Network::Testnet, AddressFormat::P2PKH).unwrap();
         let addr_str = addr.to_string();
         assert!(addr_str.starts_with('m') || addr_str.starts_with('n'));
@@ -419,7 +419,7 @@ mod tests {
     fn test_p2tr_taproot_address() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key.address(Network::Mainnet, AddressFormat::P2TR).unwrap();
         let addr_str = addr.to_string();
         // P2TR addresses start with bc1p on mainnet
@@ -435,12 +435,12 @@ mod tests {
     fn test_p2tr_roundtrip() {
         let bytes =
             hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = BtcPrivateKey::from_bytes(&bytes).unwrap();
+        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
         let addr = key.address(Network::Mainnet, AddressFormat::P2TR).unwrap();
         let addr_str = addr.to_string();
 
         // Parse it back
-        let parsed: BtcAddress = addr_str.parse().unwrap();
+        let parsed: Address = addr_str.parse().unwrap();
         assert_eq!(parsed.network(), Network::Mainnet);
         assert_eq!(parsed.format(), AddressFormat::P2TR);
         assert_eq!(parsed.to_string(), addr_str);

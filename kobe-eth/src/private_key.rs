@@ -14,9 +14,9 @@ use zeroize::Zeroize;
 use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, PrivateKey as _, PublicKey as _, Result, Signature};
 
-use crate::address::EthAddress;
+use crate::address::Address;
 use crate::eip191;
-use crate::public_key::EthPublicKey;
+use crate::public_key::PublicKey;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -25,11 +25,11 @@ use alloc::string::String;
 ///
 /// Provides secure key management with automatic zeroization on drop.
 #[derive(Clone)]
-pub struct EthPrivateKey {
+pub struct PrivateKey {
     inner: SigningKey,
 }
 
-impl Zeroize for EthPrivateKey {
+impl Zeroize for PrivateKey {
     fn zeroize(&mut self) {
         // SigningKey internally zeroizes on drop
         // We create a new key and swap to trigger the drop
@@ -38,14 +38,14 @@ impl Zeroize for EthPrivateKey {
     }
 }
 
-impl Drop for EthPrivateKey {
+impl Drop for PrivateKey {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl kobe::PrivateKey for EthPrivateKey {
-    type PublicKey = EthPublicKey;
+impl kobe::PrivateKey for PrivateKey {
+    type PublicKey = PublicKey;
 
     fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
         Ok(Self {
@@ -69,7 +69,7 @@ impl kobe::PrivateKey for EthPrivateKey {
     }
 
     fn public_key(&self) -> Self::PublicKey {
-        EthPublicKey::from_signing_key(&self.inner)
+        PublicKey::from_verifying_key(*self.inner.verifying_key())
     }
 
     fn sign_prehash(&self, hash: &[u8; 32]) -> Result<Signature> {
@@ -88,11 +88,11 @@ impl kobe::PrivateKey for EthPrivateKey {
     }
 }
 
-impl EthPrivateKey {
+impl PrivateKey {
     /// Get the corresponding address.
     #[inline]
     #[must_use]
-    pub fn address(&self) -> EthAddress {
+    pub fn address(&self) -> Address {
         self.public_key().to_address()
     }
 
@@ -134,13 +134,13 @@ impl EthPrivateKey {
     }
 }
 
-impl core::fmt::Debug for EthPrivateKey {
+impl core::fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "EthPrivateKey([REDACTED])")
+        write!(f, "PrivateKey([REDACTED])")
     }
 }
 
-impl core::str::FromStr for EthPrivateKey {
+impl core::str::FromStr for PrivateKey {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
@@ -182,13 +182,13 @@ mod tests {
     fn test_from_bytes() {
         let bytes =
             hex_literal::hex!("4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318");
-        let key = EthPrivateKey::from_bytes(&bytes).unwrap();
+        let key = PrivateKey::from_bytes(&bytes).unwrap();
         assert_eq!(key.to_bytes(), bytes);
     }
 
     #[test]
     fn test_from_str() {
-        let key: EthPrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse()
             .unwrap();
         let expected =
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_address_derivation() {
-        let key: EthPrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse()
             .unwrap();
         let addr = key.address();
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_to_hex() {
-        let key: EthPrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse()
             .unwrap();
         assert_eq!(
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_eip712_sign() {
-        let key: EthPrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
             .parse()
             .unwrap();
 
