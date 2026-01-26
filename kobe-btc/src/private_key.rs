@@ -39,10 +39,6 @@ impl Drop for BtcPrivateKey {
     }
 }
 
-// ============================================================================
-// kobe::PrivateKey trait implementation
-// ============================================================================
-
 impl kobe::PrivateKey for BtcPrivateKey {
     type PublicKey = BtcPublicKey;
 
@@ -90,10 +86,6 @@ impl kobe::PrivateKey for BtcPrivateKey {
         Ok(Signature::new(r, s, recid.to_byte()))
     }
 }
-
-// ============================================================================
-// Additional methods (Bitcoin-specific)
-// ============================================================================
 
 impl BtcPrivateKey {
     /// Set whether to use compressed public key.

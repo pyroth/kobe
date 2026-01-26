@@ -43,10 +43,6 @@ impl Drop for EthPrivateKey {
     }
 }
 
-// ============================================================================
-// kobe::PrivateKey trait implementation
-// ============================================================================
-
 impl kobe::PrivateKey for EthPrivateKey {
     type PublicKey = EthPublicKey;
 
@@ -90,10 +86,6 @@ impl kobe::PrivateKey for EthPrivateKey {
         Ok(Signature::new(r, s, recid.to_byte()))
     }
 }
-
-// ============================================================================
-// Additional methods (Ethereum-specific)
-// ============================================================================
 
 impl EthPrivateKey {
     /// Get the corresponding address.

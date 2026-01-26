@@ -1,5 +1,6 @@
-//! Bitcoin address implementation.
+//! Bitcoin address types and encoding.
 //!
+//! Supports P2PKH, P2SH, P2WPKH (native SegWit), and P2TR (Taproot) formats.
 //! Implements `kobe::Address` trait for unified wallet interface.
 
 #[cfg(feature = "alloc")]
@@ -43,7 +44,13 @@ pub struct BtcAddress {
 }
 
 impl BtcAddress {
-    /// Create a P2PKH address from a public key.
+    /// Creates an address from a public key in the specified format.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let addr = BtcAddress::from_public_key(&pubkey, Network::Mainnet, AddressFormat::P2WPKH)?;
+    /// println!("{}", addr); // bc1q...
+    /// ```
     pub fn from_public_key(
         public_key: &BtcPublicKey,
         network: Network,
@@ -301,10 +308,6 @@ impl BtcAddress {
         })
     }
 }
-
-// ============================================================================
-// kobe::Address trait implementation
-// ============================================================================
 
 impl kobe::Address for BtcAddress {
     #[cfg(feature = "alloc")]

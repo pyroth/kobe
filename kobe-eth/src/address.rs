@@ -1,4 +1,4 @@
-//! Ethereum address implementation.
+//! Ethereum address with EIP-55 checksum encoding.
 //!
 //! Implements `kobe::Address` trait for unified wallet interface.
 
@@ -109,10 +109,6 @@ impl core::str::FromStr for EthAddress {
         kobe::Address::from_str(s)
     }
 }
-
-// ============================================================================
-// kobe::Address trait implementation
-// ============================================================================
 
 impl kobe::Address for EthAddress {
     #[cfg(feature = "alloc")]

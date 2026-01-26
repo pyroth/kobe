@@ -28,10 +28,10 @@ mod public_key;
 mod transaction;
 
 pub use address::EthAddress;
-pub use extended_key::ExtendedPrivateKey;
-pub use extended_public_key::ExtendedPublicKey;
+pub use extended_key::EthExtendedPrivateKey;
+pub use extended_public_key::EthExtendedPublicKey;
 pub use kobe::wordlist::bip39::Language;
-pub use mnemonic::Mnemonic;
+pub use mnemonic::EthMnemonic;
 pub use network::Network;
 pub use private_key::EthPrivateKey;
 pub use public_key::EthPublicKey;

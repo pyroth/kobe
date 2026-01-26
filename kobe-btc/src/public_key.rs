@@ -70,10 +70,6 @@ impl BtcPublicKey {
     }
 }
 
-// ============================================================================
-// kobe::PublicKey trait implementation
-// ============================================================================
-
 impl kobe::PublicKey for BtcPublicKey {
     type Address = BtcAddress;
 
@@ -119,10 +115,6 @@ impl kobe::PublicKey for BtcPublicKey {
             .map_err(|_| Error::InvalidSignature)
     }
 }
-
-// ============================================================================
-// Additional methods (Bitcoin-specific)
-// ============================================================================
 
 impl BtcPublicKey {
     /// Get the x-only public key (32 bytes) for Taproot.

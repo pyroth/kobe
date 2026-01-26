@@ -7,7 +7,7 @@ use alloc::string::String;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use crate::extended_key::ExtendedPrivateKey;
+use crate::extended_key::BtcExtendedPrivateKey;
 use crate::network::Network;
 use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, Result};
@@ -25,28 +25,37 @@ fn get_wordlist() -> Vec<&'static str> {
 /// Number of PBKDF2 rounds for seed derivation.
 const PBKDF2_ROUNDS: u32 = 2048;
 
-/// BIP-39 Mnemonic phrase.
+/// BIP-39 Mnemonic phrase for Bitcoin.
 #[derive(Clone)]
-pub struct Mnemonic {
+pub struct BtcMnemonic {
     /// The entropy bytes (16-32 bytes depending on word count)
     entropy: Vec<u8>,
 }
 
-impl Zeroize for Mnemonic {
+impl Zeroize for BtcMnemonic {
     fn zeroize(&mut self) {
         self.entropy.zeroize();
     }
 }
 
-impl Drop for Mnemonic {
+impl Drop for BtcMnemonic {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl Mnemonic {
-    /// Generate a new mnemonic with the specified word count.
-    /// Valid word counts: 12, 15, 18, 21, 24
+impl BtcMnemonic {
+    /// Generates a new BIP-39 mnemonic phrase.
+    ///
+    /// # Arguments
+    /// * `rng` - Cryptographically secure random number generator
+    /// * `word_count` - Number of words (12, 15, 18, 21, or 24)
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mnemonic = BtcMnemonic::generate(&mut rand::thread_rng(), 12)?;
+    /// println!("{}", mnemonic.to_phrase_string());
+    /// ```
     #[cfg(feature = "alloc")]
     pub fn generate<
         R: k256::elliptic_curve::rand_core::RngCore + k256::elliptic_curve::rand_core::CryptoRng,
@@ -69,7 +78,9 @@ impl Mnemonic {
         Ok(Self { entropy })
     }
 
-    /// Create from existing entropy bytes.
+    /// Creates a mnemonic from raw entropy bytes.
+    ///
+    /// Entropy length must be 16, 20, 24, 28, or 32 bytes.
     #[cfg(feature = "alloc")]
     pub fn from_entropy(entropy: &[u8]) -> Result<Self> {
         match entropy.len() {
@@ -80,7 +91,9 @@ impl Mnemonic {
         }
     }
 
-    /// Parse mnemonic from phrase string.
+    /// Parses and validates a BIP-39 mnemonic phrase.
+    ///
+    /// Verifies checksum and extracts the underlying entropy.
     #[cfg(feature = "alloc")]
     pub fn from_phrase_str(phrase: &str) -> Result<Self> {
         let words: Vec<&str> = phrase.split_whitespace().collect();
@@ -193,9 +206,9 @@ impl Mnemonic {
         &self,
         passphrase: &str,
         network: Network,
-    ) -> Result<ExtendedPrivateKey> {
+    ) -> Result<BtcExtendedPrivateKey> {
         let seed = self.to_seed_bytes(passphrase);
-        ExtendedPrivateKey::from_seed_with_network(&seed, network)
+        BtcExtendedPrivateKey::from_seed_with_network(&seed, network)
     }
 
     /// Get the entropy bytes.
@@ -209,18 +222,14 @@ impl Mnemonic {
     }
 }
 
-impl core::fmt::Debug for Mnemonic {
+impl core::fmt::Debug for BtcMnemonic {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Mnemonic({} words)", self.word_count())
     }
 }
 
-// ============================================================================
-// kobe::Mnemonic trait implementation
-// ============================================================================
-
 #[cfg(feature = "alloc")]
-impl kobe::Mnemonic for Mnemonic {
+impl kobe::Mnemonic for BtcMnemonic {
     fn generate<R: RngCore + CryptoRng>(rng: &mut R, word_count: usize) -> Result<Self> {
         let entropy_bytes = match word_count {
             12 => 16,
@@ -264,7 +273,7 @@ mod tests {
     fn test_mnemonic_from_entropy() {
         // Test vector from BIP-39
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
-        let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
+        let mnemonic = BtcMnemonic::from_entropy(&entropy).unwrap();
         let phrase = mnemonic.to_phrase_string();
         assert_eq!(
             phrase,
@@ -275,7 +284,7 @@ mod tests {
     #[test]
     fn test_mnemonic_from_phrase() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = BtcMnemonic::from_phrase_str(phrase).unwrap();
         assert_eq!(
             mnemonic.entropy(),
             hex_literal::hex!("00000000000000000000000000000000")
@@ -285,14 +294,14 @@ mod tests {
     #[test]
     fn test_mnemonic_roundtrip() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = BtcMnemonic::from_phrase_str(phrase).unwrap();
         assert_eq!(mnemonic.to_phrase(), phrase);
     }
 
     #[test]
     fn test_mnemonic_to_seed() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = BtcMnemonic::from_phrase_str(phrase).unwrap();
         let seed = mnemonic.to_seed_bytes("TREZOR");
 
         // Known test vector
@@ -306,7 +315,7 @@ mod tests {
     fn test_24_word_mnemonic() {
         let entropy =
             hex_literal::hex!("0000000000000000000000000000000000000000000000000000000000000000");
-        let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
+        let mnemonic = BtcMnemonic::from_entropy(&entropy).unwrap();
         assert_eq!(mnemonic.word_count(), 24);
 
         let phrase = mnemonic.to_phrase_string();
@@ -317,7 +326,7 @@ mod tests {
     #[test]
     fn test_to_extended_key() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = BtcMnemonic::from_phrase_str(phrase).unwrap();
         let xkey = mnemonic.to_extended_key("", Network::Mainnet).unwrap();
 
         // Derive BIP-44 Bitcoin account

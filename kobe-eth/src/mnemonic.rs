@@ -17,7 +17,7 @@ use alloc::string::String;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use crate::extended_key::ExtendedPrivateKey;
+use crate::extended_key::EthExtendedPrivateKey;
 use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::wordlist::bip39::Language;
 use kobe::{Error, Result};
@@ -35,29 +35,31 @@ fn get_wordlist_for_language(language: Language) -> Vec<&'static str> {
 /// Number of PBKDF2 rounds for seed derivation.
 const PBKDF2_ROUNDS: u32 = 2048;
 
-/// BIP-39 Mnemonic phrase.
+/// BIP-39 Mnemonic phrase for Ethereum.
 #[derive(Clone)]
-pub struct Mnemonic {
+pub struct EthMnemonic {
     /// The entropy bytes (16-32 bytes depending on word count)
     entropy: Vec<u8>,
     /// The language of the mnemonic
     language: Language,
 }
 
-impl Zeroize for Mnemonic {
+impl Zeroize for EthMnemonic {
     fn zeroize(&mut self) {
         self.entropy.zeroize();
     }
 }
 
-impl Drop for Mnemonic {
+impl Drop for EthMnemonic {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl Mnemonic {
-    /// Create from existing entropy bytes (English by default).
+impl EthMnemonic {
+    /// Creates a mnemonic from raw entropy bytes (English by default).
+    ///
+    /// Entropy length must be 16, 20, 24, 28, or 32 bytes.
     #[cfg(feature = "alloc")]
     pub fn from_entropy(entropy: &[u8]) -> Result<Self> {
         Self::from_entropy_with_language(entropy, Language::English)
@@ -75,7 +77,12 @@ impl Mnemonic {
         }
     }
 
-    /// Generate a new mnemonic with specific language.
+    /// Generates a new BIP-39 mnemonic in the specified language.
+    ///
+    /// # Arguments
+    /// * `rng` - Cryptographically secure random number generator
+    /// * `word_count` - Number of words (12, 15, 18, 21, or 24)
+    /// * `language` - Target language for the mnemonic phrase
     #[cfg(feature = "alloc")]
     pub fn generate_with_language<R: RngCore + CryptoRng>(
         rng: &mut R,
@@ -229,10 +236,10 @@ impl Mnemonic {
 
     /// Derive an extended private key from this mnemonic.
     #[cfg(feature = "alloc")]
-    pub fn to_extended_key(&self, passphrase: &str) -> Result<ExtendedPrivateKey> {
+    pub fn to_extended_key(&self, passphrase: &str) -> Result<EthExtendedPrivateKey> {
         use kobe::ExtendedPrivateKey as _;
         let seed = self.to_seed_bytes(passphrase);
-        ExtendedPrivateKey::from_seed(&seed)
+        EthExtendedPrivateKey::from_seed(&seed)
     }
 
     /// Get the entropy bytes.
@@ -246,18 +253,14 @@ impl Mnemonic {
     }
 }
 
-impl core::fmt::Debug for Mnemonic {
+impl core::fmt::Debug for EthMnemonic {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Mnemonic({} words)", self.word_count())
     }
 }
 
-// ============================================================================
-// kobe::Mnemonic trait implementation
-// ============================================================================
-
 #[cfg(feature = "alloc")]
-impl kobe::Mnemonic for Mnemonic {
+impl kobe::Mnemonic for EthMnemonic {
     fn generate<R: RngCore + CryptoRng>(rng: &mut R, word_count: usize) -> Result<Self> {
         let entropy_bytes = match word_count {
             12 => 16,
@@ -303,7 +306,7 @@ mod tests {
     fn test_mnemonic_from_entropy() {
         // Test vector from BIP-39
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
-        let mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
+        let mnemonic = EthMnemonic::from_entropy(&entropy).unwrap();
         let phrase = mnemonic.to_phrase_string();
         assert_eq!(
             phrase,
@@ -314,7 +317,7 @@ mod tests {
     #[test]
     fn test_mnemonic_from_phrase() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
         assert_eq!(
             mnemonic.entropy_bytes(),
             hex_literal::hex!("00000000000000000000000000000000")
@@ -324,7 +327,7 @@ mod tests {
     #[test]
     fn test_mnemonic_to_seed() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
         let seed = mnemonic.to_seed_bytes("TREZOR");
 
         // Known test vector
@@ -337,7 +340,7 @@ mod tests {
     #[test]
     fn test_to_extended_key() {
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
         let xkey = mnemonic.to_extended_key("").unwrap();
 
         // Derive standard Ethereum path
@@ -353,7 +356,7 @@ mod tests {
         // Test generating Chinese mnemonic from same entropy
         let entropy = hex_literal::hex!("00000000000000000000000000000000");
         let mnemonic =
-            Mnemonic::from_entropy_with_language(&entropy, Language::ChineseSimplified).unwrap();
+            EthMnemonic::from_entropy_with_language(&entropy, Language::ChineseSimplified).unwrap();
         let phrase = mnemonic.to_phrase_string();
 
         // Chinese phrase for all-zero entropy
@@ -361,7 +364,7 @@ mod tests {
         assert_eq!(mnemonic.language(), Language::ChineseSimplified);
 
         // Same entropy should produce same seed regardless of language
-        let english_mnemonic = Mnemonic::from_entropy(&entropy).unwrap();
+        let english_mnemonic = EthMnemonic::from_entropy(&entropy).unwrap();
         let chinese_seed = mnemonic.to_seed_bytes("");
         let english_seed = english_mnemonic.to_seed_bytes("");
 
@@ -374,7 +377,7 @@ mod tests {
     fn test_language_detection() {
         // Test auto-detection of English phrase
         let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Mnemonic::from_phrase_str(phrase).unwrap();
+        let mnemonic = EthMnemonic::from_phrase_str(phrase).unwrap();
         assert_eq!(mnemonic.language(), Language::English);
     }
 }

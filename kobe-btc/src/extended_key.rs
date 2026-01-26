@@ -70,9 +70,9 @@ impl From<u32> for ChildIndex {
     }
 }
 
-/// BIP-32 Extended Private Key.
+/// BIP-32 Extended Private Key for Bitcoin.
 #[derive(Clone)]
-pub struct ExtendedPrivateKey {
+pub struct BtcExtendedPrivateKey {
     /// The underlying private key
     private_key: BtcPrivateKey,
     /// Chain code for key derivation
@@ -87,7 +87,7 @@ pub struct ExtendedPrivateKey {
     network: Network,
 }
 
-impl Zeroize for ExtendedPrivateKey {
+impl Zeroize for BtcExtendedPrivateKey {
     fn zeroize(&mut self) {
         self.private_key.zeroize();
         self.chain_code.zeroize();
@@ -96,17 +96,13 @@ impl Zeroize for ExtendedPrivateKey {
     }
 }
 
-impl Drop for ExtendedPrivateKey {
+impl Drop for BtcExtendedPrivateKey {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-// ============================================================================
-// kobe::ExtendedPrivateKey trait implementation
-// ============================================================================
-
-impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
+impl kobe::ExtendedPrivateKey for BtcExtendedPrivateKey {
     type PrivateKey = BtcPrivateKey;
 
     fn from_seed(seed: &[u8]) -> Result<Self> {
@@ -140,12 +136,18 @@ impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
     }
 }
 
-// ============================================================================
-// Additional methods (Bitcoin-specific)
-// ============================================================================
-
-impl ExtendedPrivateKey {
-    /// Create master key from seed with network (BIP-32).
+impl BtcExtendedPrivateKey {
+    /// Creates a master extended private key from a seed.
+    ///
+    /// # Arguments
+    /// * `seed` - 16-64 bytes of entropy (typically from BIP-39 mnemonic)
+    /// * `network` - Bitcoin network (Mainnet or Testnet)
+    ///
+    /// # Example
+    /// ```ignore
+    /// let seed = mnemonic.to_seed("passphrase");
+    /// let xprv = BtcExtendedPrivateKey::from_seed_with_network(&seed, Network::Mainnet)?;
+    /// ```
     pub fn from_seed_with_network(seed: &[u8], network: Network) -> Result<Self> {
         if seed.len() < 16 || seed.len() > 64 {
             return Err(Error::InvalidLength {
@@ -175,7 +177,10 @@ impl ExtendedPrivateKey {
         })
     }
 
-    /// Derive a child key at the given index.
+    /// Derives a child key at the given index.
+    ///
+    /// Supports both normal (non-hardened) and hardened derivation.
+    /// Hardened keys provide stronger security isolation.
     pub fn derive_child_index(&self, index: ChildIndex) -> Result<Self> {
         if self.depth == 255 {
             return Err(Error::MaxDepthExceeded);
@@ -240,7 +245,16 @@ impl ExtendedPrivateKey {
         })
     }
 
-    /// Derive from a path string (e.g., "m/44'/0'/0'/0/0").
+    /// Derives a key from a BIP-32 path string.
+    ///
+    /// # Arguments
+    /// * `path` - Path like `"m/44'/0'/0'/0/0"` where `'` or `h` denotes hardened
+    ///
+    /// # Example
+    /// ```ignore
+    /// let account = xprv.derive_path_str("m/44'/0'/0'")?;
+    /// let address_key = account.derive_path_str("0/0")?;
+    /// ```
     #[cfg(feature = "alloc")]
     pub fn derive_path_str(&self, path: &str) -> Result<Self> {
         let path = path.trim();
@@ -323,7 +337,9 @@ impl ExtendedPrivateKey {
         self.private_key.address(self.network, format)
     }
 
-    /// Serialize to xprv format (Base58Check).
+    /// Serializes to xprv/tprv format (Base58Check).
+    ///
+    /// Returns `xprv...` for mainnet or `tprv...` for testnet.
     #[cfg(feature = "alloc")]
     pub fn to_xprv(&self) -> String {
         let mut data = Vec::with_capacity(78);
@@ -358,7 +374,9 @@ impl ExtendedPrivateKey {
         bs58::encode(data).into_string()
     }
 
-    /// Parse from xprv format (Base58Check).
+    /// Parses an extended private key from xprv/tprv format.
+    ///
+    /// Automatically detects network from version bytes.
     #[cfg(feature = "alloc")]
     pub fn from_xprv(xprv: &str) -> Result<Self> {
         let decoded = bs58::decode(xprv)
@@ -418,9 +436,9 @@ impl ExtendedPrivateKey {
     }
 }
 
-impl core::fmt::Debug for ExtendedPrivateKey {
+impl core::fmt::Debug for BtcExtendedPrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ExtendedPrivateKey")
+        f.debug_struct("BtcExtendedPrivateKey")
             .field("depth", &self.depth)
             .field("child_index", &self.child_index)
             .field("network", &self.network)
@@ -440,7 +458,7 @@ mod tests {
     #[test]
     fn test_master_key_from_seed() {
         let xkey =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(xkey.depth(), 0);
 
         let xprv = xkey.to_xprv();
@@ -450,7 +468,7 @@ mod tests {
     #[test]
     fn test_bip32_vector1_chain_m() {
         let xkey =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(
             xkey.to_xprv(),
             "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
@@ -460,7 +478,7 @@ mod tests {
     #[test]
     fn test_bip32_vector1_chain_m_0h() {
         let master =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let child = master.derive_child_index(ChildIndex::Hardened(0)).unwrap();
         assert_eq!(
             child.to_xprv(),
@@ -471,7 +489,7 @@ mod tests {
     #[test]
     fn test_derive_path() {
         let master =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let derived = master.derive_path_str("m/0'").unwrap();
         assert_eq!(derived.depth(), 1);
 
@@ -482,16 +500,16 @@ mod tests {
     #[test]
     fn test_xprv_roundtrip() {
         let master =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xprv = master.to_xprv();
-        let recovered = ExtendedPrivateKey::from_xprv(&xprv).unwrap();
+        let recovered = BtcExtendedPrivateKey::from_xprv(&xprv).unwrap();
         assert_eq!(master.to_xprv(), recovered.to_xprv());
     }
 
     #[test]
     fn test_testnet_tprv() {
         let xkey =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
         let tprv = xkey.to_xprv();
         assert!(tprv.starts_with("tprv"));
     }

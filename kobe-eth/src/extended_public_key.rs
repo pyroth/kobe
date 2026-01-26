@@ -4,7 +4,7 @@
 //! Supports non-hardened child derivation.
 
 use crate::address::EthAddress;
-use crate::extended_key::ExtendedPrivateKey;
+use crate::extended_key::EthExtendedPrivateKey;
 use crate::public_key::EthPublicKey;
 use hmac::{Hmac, Mac};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
@@ -20,7 +20,7 @@ type HmacSha512 = Hmac<Sha512>;
 /// Used for watch-only wallets and deriving addresses without private keys.
 /// Only supports non-hardened child derivation.
 #[derive(Clone)]
-pub struct ExtendedPublicKey {
+pub struct EthExtendedPublicKey {
     /// The underlying public key
     public_key: EthPublicKey,
     /// Chain code for key derivation
@@ -33,11 +33,7 @@ pub struct ExtendedPublicKey {
     child_index: u32,
 }
 
-// ============================================================================
-// kobe::ExtendedPublicKey trait implementation
-// ============================================================================
-
-impl kobe::ExtendedPublicKey for ExtendedPublicKey {
+impl kobe::ExtendedPublicKey for EthExtendedPublicKey {
     type PublicKey = EthPublicKey;
 
     fn from_extended_private_key<E: kobe::ExtendedPrivateKey>(xprv: &E) -> Result<Self>
@@ -89,13 +85,9 @@ impl kobe::ExtendedPublicKey for ExtendedPublicKey {
     }
 }
 
-// ============================================================================
-// Additional methods (Ethereum-specific)
-// ============================================================================
-
-impl ExtendedPublicKey {
+impl EthExtendedPublicKey {
     /// Create from an extended private key.
-    pub fn from_extended_private_key_internal(xprv: &ExtendedPrivateKey) -> Self {
+    pub fn from_extended_private_key_internal(xprv: &EthExtendedPrivateKey) -> Self {
         use kobe::ExtendedPrivateKey as _;
 
         Self {
@@ -207,9 +199,9 @@ impl ExtendedPublicKey {
     }
 }
 
-impl core::fmt::Debug for ExtendedPublicKey {
+impl core::fmt::Debug for EthExtendedPublicKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ExtendedPublicKey")
+        f.debug_struct("EthExtendedPublicKey")
             .field("depth", &self.depth)
             .field("child_index", &self.child_index)
             .finish()
@@ -226,8 +218,8 @@ mod tests {
 
     #[test]
     fn test_xpub_from_xprv() {
-        let xprv = crate::ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_internal(&xprv);
+        let xprv = crate::EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xpub = EthExtendedPublicKey::from_extended_private_key_internal(&xprv);
 
         assert_eq!(xpub.depth(), 0);
         assert_eq!(xpub.child_index(), 0);
@@ -235,11 +227,11 @@ mod tests {
 
     #[test]
     fn test_xpub_derive_non_hardened() {
-        let xprv = crate::ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xprv = crate::EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
 
         // First derive hardened from xprv
         let xprv_child = xprv.derive_child_hardened(44).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_internal(&xprv_child);
+        let xpub = EthExtendedPublicKey::from_extended_private_key_internal(&xprv_child);
 
         // Now derive non-hardened from xpub
         let xpub_child = xpub.derive_child(0).unwrap();
@@ -247,7 +239,7 @@ mod tests {
 
         // Compare with derivation from xprv
         let xprv_grandchild = xprv_child.derive_child(0).unwrap();
-        let xpub_from_prv = ExtendedPublicKey::from_extended_private_key_internal(&xprv_grandchild);
+        let xpub_from_prv = EthExtendedPublicKey::from_extended_private_key_internal(&xprv_grandchild);
 
         // Public keys should match
         assert_eq!(
@@ -258,8 +250,8 @@ mod tests {
 
     #[test]
     fn test_xpub_hardened_fails() {
-        let xprv = crate::ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_internal(&xprv);
+        let xprv = crate::EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xpub = EthExtendedPublicKey::from_extended_private_key_internal(&xprv);
 
         let result = xpub.derive_child(0x80000000);
         assert!(result.is_err());
@@ -267,8 +259,8 @@ mod tests {
 
     #[test]
     fn test_xpub_derive_path() {
-        let xprv = crate::ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_internal(&xprv);
+        let xprv = crate::EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xpub = EthExtendedPublicKey::from_extended_private_key_internal(&xprv);
 
         // Non-hardened path should work
         let derived = xpub.derive_path_str("m/0/1/2").unwrap();
@@ -281,8 +273,8 @@ mod tests {
 
     #[test]
     fn test_xpub_address() {
-        let xprv = crate::ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_internal(&xprv);
+        let xprv = crate::EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xpub = EthExtendedPublicKey::from_extended_private_key_internal(&xprv);
 
         // Should be able to derive an address
         let _addr = xpub.address();

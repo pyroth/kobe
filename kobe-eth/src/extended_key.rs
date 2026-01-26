@@ -12,14 +12,13 @@ use kobe::{Error, Result};
 use sha2::Sha512;
 use zeroize::Zeroize;
 
-// Import traits to bring methods into scope
 use kobe::PrivateKey as _;
 
 type HmacSha512 = Hmac<Sha512>;
 
 /// BIP-32 Extended Private Key for Ethereum.
 #[derive(Clone)]
-pub struct ExtendedPrivateKey {
+pub struct EthExtendedPrivateKey {
     /// The underlying private key
     private_key: EthPrivateKey,
     /// Chain code for key derivation
@@ -32,7 +31,7 @@ pub struct ExtendedPrivateKey {
     child_index: u32,
 }
 
-impl Zeroize for ExtendedPrivateKey {
+impl Zeroize for EthExtendedPrivateKey {
     fn zeroize(&mut self) {
         self.private_key.zeroize();
         self.chain_code.zeroize();
@@ -41,17 +40,13 @@ impl Zeroize for ExtendedPrivateKey {
     }
 }
 
-impl Drop for ExtendedPrivateKey {
+impl Drop for EthExtendedPrivateKey {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-// ============================================================================
-// kobe::ExtendedPrivateKey trait implementation
-// ============================================================================
-
-impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
+impl kobe::ExtendedPrivateKey for EthExtendedPrivateKey {
     type PrivateKey = EthPrivateKey;
 
     fn from_seed(seed: &[u8]) -> Result<Self> {
@@ -108,11 +103,7 @@ impl kobe::ExtendedPrivateKey for ExtendedPrivateKey {
     }
 }
 
-// ============================================================================
-// Additional methods (Ethereum-specific)
-// ============================================================================
-
-impl ExtendedPrivateKey {
+impl EthExtendedPrivateKey {
     /// Derive a child key at the given index.
     fn derive_child_internal(&self, index: u32, hardened: bool) -> Result<Self> {
         if self.depth == 255 {
@@ -175,7 +166,15 @@ impl ExtendedPrivateKey {
         })
     }
 
-    /// Derive from a path string (e.g., "m/44'/60'/0'/0/0").
+    /// Derives a key from a BIP-32 path string.
+    ///
+    /// Standard Ethereum path is `m/44'/60'/0'/0/0`.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let wallet = xprv.derive_path_str("m/44'/60'/0'/0/0")?;
+    /// let addr = wallet.address();
+    /// ```
     #[cfg(feature = "alloc")]
     pub fn derive_path_str(&self, path: &str) -> Result<Self> {
         let path = path.trim();
@@ -248,9 +247,9 @@ impl ExtendedPrivateKey {
     }
 }
 
-impl core::fmt::Debug for ExtendedPrivateKey {
+impl core::fmt::Debug for EthExtendedPrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ExtendedPrivateKey")
+        f.debug_struct("EthExtendedPrivateKey")
             .field("depth", &self.depth)
             .field("child_index", &self.child_index)
             .field("private_key", &"[REDACTED]")
@@ -268,13 +267,13 @@ mod tests {
 
     #[test]
     fn test_master_key_from_seed() {
-        let xkey = ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let xkey = EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
         assert_eq!(xkey.depth(), 0);
     }
 
     #[test]
     fn test_derive_path() {
-        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let master = EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
         // Standard Ethereum derivation path
         let derived = master.derive_path_str("m/44'/60'/0'/0/0").unwrap();
         assert_eq!(derived.depth(), 5);
@@ -285,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_hardened_derivation() {
-        let master = ExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
+        let master = EthExtendedPrivateKey::from_seed(TEST_SEED_1).unwrap();
         let child = master.derive_child_hardened(44).unwrap();
         assert_eq!(child.depth(), 1);
     }

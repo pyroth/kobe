@@ -6,7 +6,7 @@
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
-use crate::extended_key::ExtendedPrivateKey;
+use crate::extended_key::BtcExtendedPrivateKey;
 use crate::network::Network;
 use crate::public_key::BtcPublicKey;
 use hmac::{Hmac, Mac};
@@ -15,8 +15,6 @@ use k256::{ProjectivePoint, PublicKey as K256PublicKey};
 use kobe::{Error, Result};
 use sha2::Sha512;
 
-// Import traits to bring methods into scope
-
 type HmacSha512 = Hmac<Sha512>;
 
 /// BIP-32 Extended Public Key for Bitcoin.
@@ -24,7 +22,7 @@ type HmacSha512 = Hmac<Sha512>;
 /// Used for watch-only wallets and deriving addresses without private keys.
 /// Only supports non-hardened child derivation.
 #[derive(Clone)]
-pub struct ExtendedPublicKey {
+pub struct BtcExtendedPublicKey {
     /// The underlying public key
     public_key: BtcPublicKey,
     /// Chain code for key derivation
@@ -39,11 +37,7 @@ pub struct ExtendedPublicKey {
     network: Network,
 }
 
-// ============================================================================
-// kobe::ExtendedPublicKey trait implementation
-// ============================================================================
-
-impl kobe::ExtendedPublicKey for ExtendedPublicKey {
+impl kobe::ExtendedPublicKey for BtcExtendedPublicKey {
     type PublicKey = BtcPublicKey;
 
     fn from_extended_private_key<E: kobe::ExtendedPrivateKey>(xprv: &E) -> Result<Self>
@@ -98,14 +92,10 @@ impl kobe::ExtendedPublicKey for ExtendedPublicKey {
     }
 }
 
-// ============================================================================
-// Additional methods (Bitcoin-specific)
-// ============================================================================
-
-impl ExtendedPublicKey {
+impl BtcExtendedPublicKey {
     /// Create from an extended private key with network.
     pub fn from_extended_private_key_with_network(
-        xprv: &ExtendedPrivateKey,
+        xprv: &BtcExtendedPrivateKey,
         network: Network,
     ) -> Self {
         Self {
@@ -301,9 +291,9 @@ impl ExtendedPublicKey {
     }
 }
 
-impl core::fmt::Debug for ExtendedPublicKey {
+impl core::fmt::Debug for BtcExtendedPublicKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ExtendedPublicKey")
+        f.debug_struct("BtcExtendedPublicKey")
             .field("depth", &self.depth)
             .field("child_index", &self.child_index)
             .field("network", &self.network)
@@ -322,9 +312,9 @@ mod tests {
     #[test]
     fn test_xpub_from_xprv() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xpub =
-            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+            BtcExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         assert_eq!(xpub.depth(), 0);
         assert_eq!(xpub.child_index(), 0);
@@ -333,24 +323,24 @@ mod tests {
     #[test]
     fn test_xpub_serialization() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xpub =
-            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+            BtcExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         let serialized = xpub.to_xpub();
         assert!(serialized.starts_with("xpub"));
 
         // Roundtrip
-        let recovered = ExtendedPublicKey::from_xpub(&serialized).unwrap();
+        let recovered = BtcExtendedPublicKey::from_xpub(&serialized).unwrap();
         assert_eq!(xpub.to_xpub(), recovered.to_xpub());
     }
 
     #[test]
     fn test_xpub_bip32_vector1() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xpub =
-            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+            BtcExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // BIP-32 test vector 1 chain m expected xpub
         assert_eq!(
@@ -362,13 +352,13 @@ mod tests {
     #[test]
     fn test_xpub_derive_non_hardened() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
 
         // First derive hardened from xprv, then get xpub
         let xprv_child = xprv
             .derive_child_index(crate::ChildIndex::Hardened(0))
             .unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(
+        let xpub = BtcExtendedPublicKey::from_extended_private_key_with_network(
             &xprv_child,
             Network::Mainnet,
         );
@@ -381,7 +371,7 @@ mod tests {
         let xprv_grandchild = xprv_child
             .derive_child_index(crate::ChildIndex::Normal(1))
             .unwrap();
-        let xpub_from_prv = ExtendedPublicKey::from_extended_private_key_with_network(
+        let xpub_from_prv = BtcExtendedPublicKey::from_extended_private_key_with_network(
             &xprv_grandchild,
             Network::Mainnet,
         );
@@ -392,9 +382,9 @@ mod tests {
     #[test]
     fn test_xpub_hardened_fails() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xpub =
-            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+            BtcExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // Hardened derivation should fail
         let result = xpub.derive_child(0x80000000);
@@ -404,9 +394,9 @@ mod tests {
     #[test]
     fn test_xpub_derive_path() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xpub =
-            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+            BtcExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // Non-hardened path should work
         let derived = xpub.derive_path_str("m/0/1/2").unwrap();
@@ -420,9 +410,9 @@ mod tests {
     #[test]
     fn test_testnet_tpub() {
         let xprv =
-            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
+            BtcExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
         let xpub =
-            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Testnet);
+            BtcExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Testnet);
 
         let tpub = xpub.to_xpub();
         assert!(tpub.starts_with("tpub"));

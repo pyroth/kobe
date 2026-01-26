@@ -29,10 +29,6 @@ impl EthPublicKey {
     }
 }
 
-// ============================================================================
-// kobe::PublicKey trait implementation
-// ============================================================================
-
 impl kobe::PublicKey for EthPublicKey {
     type Address = EthAddress;
 
@@ -72,10 +68,6 @@ impl kobe::PublicKey for EthPublicKey {
             .map_err(|_| Error::InvalidSignature)
     }
 }
-
-// ============================================================================
-// Additional methods (Ethereum-specific)
-// ============================================================================
 
 impl EthPublicKey {
     /// Recover public key from signature and message hash.
