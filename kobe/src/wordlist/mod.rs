@@ -3,6 +3,6 @@
 //! This module provides wordlists in multiple languages for BIP-39 mnemonic phrases.
 
 pub mod bip39;
-pub mod wordlist;
+pub mod traits;
 
-pub use self::wordlist::{Wordlist, WordlistError};
+pub use self::traits::{Wordlist, WordlistError};

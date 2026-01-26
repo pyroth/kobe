@@ -9,10 +9,10 @@ use alloc::string::String;
 pub trait Wordlist: Copy + Clone + Debug + Send + Sync + 'static + Eq + Sized {
     /// Get the word at the given index.
     fn get_word(index: usize) -> Option<&'static str>;
-    
+
     /// Get the index of the given word.
     fn get_index(word: &str) -> Option<usize>;
-    
+
     /// Get all words in the wordlist.
     fn get_all() -> &'static [&'static str];
 }

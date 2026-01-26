@@ -16,30 +16,30 @@ impl EthAddress {
     pub const fn from_bytes(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
-    
+
     /// Create from a public key.
     pub fn from_public_key(public_key: &EthPublicKey) -> Self {
         let raw = public_key.to_raw_bytes();
-        let hash = Keccak256::digest(&raw);
+        let hash = Keccak256::digest(raw);
         let mut addr = [0u8; 20];
         addr.copy_from_slice(&hash[12..]);
         Self(addr)
     }
-    
+
     /// Get the raw bytes.
     pub const fn as_bytes(&self) -> &[u8; 20] {
         &self.0
     }
-    
+
     /// Convert to EIP-55 checksummed string.
     #[cfg(feature = "alloc")]
     pub fn to_checksum_string(&self) -> String {
         let hex_addr = to_hex_lower(&self.0);
         let hash = Keccak256::digest(hex_addr.as_bytes());
-        
+
         let mut result = String::with_capacity(42);
         result.push_str("0x");
-        
+
         for (i, c) in hex_addr.chars().enumerate() {
             if c.is_ascii_alphabetic() {
                 let hash_nibble = if i % 2 == 0 {
@@ -47,7 +47,7 @@ impl EthAddress {
                 } else {
                     hash[i / 2] & 0x0f
                 };
-                
+
                 if hash_nibble >= 8 {
                     result.push(c.to_ascii_uppercase());
                 } else {
@@ -57,7 +57,7 @@ impl EthAddress {
                 result.push(c);
             }
         }
-        
+
         result
     }
 }
@@ -102,7 +102,7 @@ impl core::fmt::Display for EthAddress {
 
 impl core::str::FromStr for EthAddress {
     type Err = Error;
-    
+
     fn from_str(s: &str) -> Result<Self> {
         let s = s.strip_prefix("0x").unwrap_or(s);
         if s.len() != 40 {
@@ -111,15 +111,16 @@ impl core::str::FromStr for EthAddress {
                 actual: s.len(),
             });
         }
-        
+
         let mut bytes = [0u8; 20];
         for (i, chunk) in s.as_bytes().chunks(2).enumerate() {
             bytes[i] = u8::from_str_radix(
                 core::str::from_utf8(chunk).map_err(|_| Error::InvalidEncoding)?,
-                16
-            ).map_err(|_| Error::InvalidEncoding)?;
+                16,
+            )
+            .map_err(|_| Error::InvalidEncoding)?;
         }
-        
+
         Ok(Self(bytes))
     }
 }
@@ -145,7 +146,7 @@ impl From<EthAddress> for [u8; 20] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_from_str() {
         let addr: EthAddress = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
@@ -154,7 +155,7 @@ mod tests {
         let expected = hex_literal::hex!("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
         assert_eq!(addr.as_bytes(), &expected);
     }
-    
+
     #[test]
     fn test_checksum() {
         let addr: EthAddress = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
@@ -165,7 +166,7 @@ mod tests {
             "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
         );
     }
-    
+
     #[test]
     fn test_display() {
         let addr: EthAddress = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"

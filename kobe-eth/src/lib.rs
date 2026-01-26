@@ -10,12 +10,12 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+mod address;
 mod private_key;
 mod public_key;
-mod address;
 
+pub use address::EthAddress;
 pub use private_key::EthPrivateKey;
 pub use public_key::EthPublicKey;
-pub use address::EthAddress;
 
 pub use kobe::{Error, Result, Signature};

@@ -2,5 +2,12 @@
 name = "kobe-xmr"
 version = "0.1.0"
 edition = "2024"
+description = "Monero wallet support for Kobe (placeholder)"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std"]
+std = []
+alloc = []
 
 [dependencies]

@@ -1,8 +1,8 @@
 //! Cryptographic hash functions used in cryptocurrency operations.
 
+use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
-use ripemd::Ripemd160;
 
 /// Compute SHA-256 hash
 #[inline]
@@ -68,6 +68,9 @@ mod tests {
     fn test_hash160() {
         let data = b"hello";
         let hash = hash160(data);
-        assert_eq!(hex::encode(hash), "b6a9c8c230722b7c748331a8b450f05566dc7d0f");
+        assert_eq!(
+            hex::encode(hash),
+            "b6a9c8c230722b7c748331a8b450f05566dc7d0f"
+        );
     }
 }

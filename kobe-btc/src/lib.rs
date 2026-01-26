@@ -19,18 +19,18 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-mod private_key;
-mod public_key;
 mod address;
-mod network;
 mod extended_key;
 mod mnemonic;
+mod network;
+mod private_key;
+mod public_key;
 
+pub use address::{AddressFormat, BtcAddress};
+pub use extended_key::{ChildIndex, ExtendedPrivateKey};
+pub use mnemonic::Mnemonic;
+pub use network::Network;
 pub use private_key::BtcPrivateKey;
 pub use public_key::BtcPublicKey;
-pub use address::{BtcAddress, AddressFormat};
-pub use network::Network;
-pub use extended_key::{ExtendedPrivateKey, ChildIndex};
-pub use mnemonic::Mnemonic;
 
 pub use kobe::{Error, Result, Signature};

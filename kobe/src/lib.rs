@@ -17,9 +17,9 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+pub mod encoding;
 pub mod error;
 pub mod hash;
-pub mod encoding;
 pub mod traits;
 pub mod types;
 pub mod wordlist;
@@ -27,4 +27,4 @@ pub mod wordlist;
 pub use error::{Error, Result};
 pub use traits::*;
 pub use types::*;
-pub use wordlist::{bip39, WordlistError};
+pub use wordlist::{WordlistError, bip39};

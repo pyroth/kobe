@@ -1,9 +1,10 @@
 //! Bitcoin network types.
 
 /// Bitcoin network type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Network {
     /// Bitcoin mainnet
+    #[default]
     Mainnet,
     /// Bitcoin testnet
     Testnet,
@@ -17,7 +18,7 @@ impl Network {
             Self::Testnet => 0x6f,
         }
     }
-    
+
     /// Get the P2SH address prefix (version byte)
     pub const fn p2sh_prefix(&self) -> u8 {
         match self {
@@ -25,7 +26,7 @@ impl Network {
             Self::Testnet => 0xc4,
         }
     }
-    
+
     /// Get the WIF prefix (version byte)
     pub const fn wif_prefix(&self) -> u8 {
         match self {
@@ -33,18 +34,12 @@ impl Network {
             Self::Testnet => 0xef,
         }
     }
-    
+
     /// Get the Bech32 human-readable part
     pub const fn bech32_hrp(&self) -> &'static str {
         match self {
             Self::Mainnet => "bc",
             Self::Testnet => "tb",
         }
-    }
-}
-
-impl Default for Network {
-    fn default() -> Self {
-        Self::Mainnet
     }
 }

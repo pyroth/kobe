@@ -24,10 +24,10 @@ pub fn to_hex(bytes: &[u8]) -> String {
 #[cfg(feature = "alloc")]
 pub fn from_hex(s: &str) -> Result<Vec<u8>> {
     let s = s.strip_prefix("0x").unwrap_or(s);
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err(Error::InvalidEncoding);
     }
-    
+
     let mut result = Vec::with_capacity(s.len() / 2);
     for chunk in s.as_bytes().chunks(2) {
         let high = hex_char_to_nibble(chunk[0])?;
@@ -53,10 +53,10 @@ pub fn base58check_encode(version: &[u8], payload: &[u8]) -> String {
     let mut data = Vec::with_capacity(version.len() + payload.len() + 4);
     data.extend_from_slice(version);
     data.extend_from_slice(payload);
-    
+
     let checksum = double_sha256(&data);
     data.extend_from_slice(&checksum[..4]);
-    
+
     bs58::encode(data).into_string()
 }
 
@@ -66,21 +66,21 @@ pub fn base58check_decode(encoded: &str) -> Result<(Vec<u8>, Vec<u8>)> {
     let data = bs58::decode(encoded)
         .into_vec()
         .map_err(|_| Error::InvalidEncoding)?;
-    
+
     if data.len() < 5 {
         return Err(Error::InvalidLength {
             expected: 5,
             actual: data.len(),
         });
     }
-    
+
     let (payload, checksum) = data.split_at(data.len() - 4);
     let computed_checksum = double_sha256(payload);
-    
+
     if checksum != &computed_checksum[..4] {
         return Err(Error::InvalidChecksum);
     }
-    
+
     // Assume first byte is version for Bitcoin-style addresses
     Ok((payload[..1].to_vec(), payload[1..].to_vec()))
 }
@@ -90,10 +90,10 @@ pub fn base58check_decode(encoded: &str) -> Result<(Vec<u8>, Vec<u8>)> {
 pub fn eth_checksum_address(address: &[u8; 20]) -> String {
     let hex_addr = to_hex(address);
     let hash = crate::hash::keccak256(hex_addr.as_bytes());
-    
+
     let mut result = String::with_capacity(42);
     result.push_str("0x");
-    
+
     for (i, c) in hex_addr.chars().enumerate() {
         if c.is_ascii_alphabetic() {
             let hash_nibble = if i % 2 == 0 {
@@ -101,7 +101,7 @@ pub fn eth_checksum_address(address: &[u8; 20]) -> String {
             } else {
                 hash[i / 2] & 0x0f
             };
-            
+
             if hash_nibble >= 8 {
                 result.push(c.to_ascii_uppercase());
             } else {
@@ -111,7 +111,7 @@ pub fn eth_checksum_address(address: &[u8; 20]) -> String {
             result.push(c);
         }
     }
-    
+
     result
 }
 
@@ -119,12 +119,12 @@ pub fn eth_checksum_address(address: &[u8; 20]) -> String {
 #[cfg(feature = "alloc")]
 pub fn bech32_encode(hrp: &str, version: u8, data: &[u8]) -> Result<String> {
     use bech32::Hrp;
-    
+
     let hrp = Hrp::parse(hrp).map_err(|_| Error::InvalidEncoding)?;
     let mut encoded_data = Vec::with_capacity(data.len() + 1);
     encoded_data.push(version);
     encoded_data.extend_from_slice(data);
-    
+
     bech32::encode::<bech32::Bech32m>(hrp, &encoded_data).map_err(|_| Error::InvalidEncoding)
 }
 
@@ -132,17 +132,17 @@ pub fn bech32_encode(hrp: &str, version: u8, data: &[u8]) -> Result<String> {
 #[cfg(feature = "alloc")]
 pub fn bech32_decode(encoded: &str) -> Result<(String, u8, Vec<u8>)> {
     let (hrp, data) = bech32::decode(encoded).map_err(|_| Error::InvalidEncoding)?;
-    
+
     if data.is_empty() {
         return Err(Error::InvalidLength {
             expected: 1,
             actual: 0,
         });
     }
-    
+
     let version = data[0];
     let payload = data[1..].to_vec();
-    
+
     Ok((hrp.to_string(), version, payload))
 }
 

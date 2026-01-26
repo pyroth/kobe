@@ -13,26 +13,25 @@ impl<const N: usize> SecretBytes<N> {
     pub const fn new(bytes: [u8; N]) -> Self {
         Self(bytes)
     }
-    
+
     /// Get a reference to the inner bytes
     #[inline]
     pub fn as_bytes(&self) -> &[u8; N] {
         &self.0
     }
-    
+
     /// Get a mutable reference to the inner bytes
     #[inline]
     pub fn as_bytes_mut(&mut self) -> &mut [u8; N] {
         &mut self.0
     }
-    
+
     /// Consume and return the inner bytes
     #[inline]
     pub fn into_bytes(self) -> [u8; N] {
         self.0
     }
 }
-
 
 impl<const N: usize> AsRef<[u8]> for SecretBytes<N> {
     fn as_ref(&self) -> &[u8] {
@@ -73,22 +72,22 @@ impl<const N: usize> Bytes<N> {
     pub const fn zero() -> Self {
         Self([0u8; N])
     }
-    
+
     /// Create from a byte array
     pub const fn new(bytes: [u8; N]) -> Self {
         Self(bytes)
     }
-    
+
     /// Get a reference to the inner bytes
     pub const fn as_bytes(&self) -> &[u8; N] {
         &self.0
     }
-    
+
     /// Get the length
     pub const fn len(&self) -> usize {
         N
     }
-    
+
     /// Check if empty
     pub const fn is_empty(&self) -> bool {
         N == 0
@@ -121,7 +120,7 @@ impl<const N: usize> From<Bytes<N>> for [u8; N] {
 
 impl<const N: usize> core::ops::Deref for Bytes<N> {
     type Target = [u8; N];
-    
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
