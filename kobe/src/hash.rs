@@ -247,7 +247,10 @@ mod tests {
             );
             let hash = keccak256(&pubkey[1..]); // Skip 0x04 prefix
             // Address is last 20 bytes
-            assert_eq!(&hash[12..], hex_literal::hex!("7e5f4552091a69125d5dfcb7b8c2659029395bdf"));
+            assert_eq!(
+                &hash[12..],
+                hex_literal::hex!("7e5f4552091a69125d5dfcb7b8c2659029395bdf")
+            );
         }
 
         #[test]

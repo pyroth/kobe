@@ -9,8 +9,8 @@ use crate::public_key::EthPublicKey;
 use hmac::{Hmac, Mac};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::{ProjectivePoint, PublicKey as K256PublicKey};
-use kobe::{Error, Result};
 use kobe::PublicKey as _;
+use kobe::{Error, Result};
 use sha2::Sha512;
 
 type HmacSha512 = Hmac<Sha512>;

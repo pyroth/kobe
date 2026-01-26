@@ -121,7 +121,13 @@ impl EthTransaction {
 
     /// Create a simple ETH transfer transaction (legacy API with raw chain_id).
     #[deprecated(since = "0.2.0", note = "Use transfer_on() with Network type instead")]
-    pub fn transfer(to: EthAddress, value: u128, nonce: u64, gas_price: u128, chain_id: u64) -> Self {
+    pub fn transfer(
+        to: EthAddress,
+        value: u128,
+        nonce: u64,
+        gas_price: u128,
+        chain_id: u64,
+    ) -> Self {
         Self {
             nonce,
             gas_price,
@@ -674,13 +680,7 @@ mod tests {
 
     #[test]
     fn test_serialize_to_hex() {
-        let tx = EthTransaction::new(EthTxParams::transfer(
-            [1u8; 20],
-            0,
-            0,
-            20_000_000_000,
-            1,
-        ));
+        let tx = EthTransaction::new(EthTxParams::transfer([1u8; 20], 0, 0, 20_000_000_000, 1));
 
         let hex = tx.to_hex();
         assert!(hex.starts_with("0x"));

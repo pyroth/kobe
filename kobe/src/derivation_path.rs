@@ -105,7 +105,9 @@ impl core::str::FromStr for ChildIndex {
 
         if s.ends_with('\'') || s.ends_with('h') || s.ends_with('H') {
             let index_str = &s[..s.len() - 1];
-            let index: u32 = index_str.parse().map_err(|_| Error::InvalidDerivationPath)?;
+            let index: u32 = index_str
+                .parse()
+                .map_err(|_| Error::InvalidDerivationPath)?;
             Self::hardened(index)
         } else {
             let index: u32 = s.parse().map_err(|_| Error::InvalidDerivationPath)?;
@@ -347,9 +349,18 @@ mod tests {
     fn test_child_index_parse() {
         assert_eq!("0".parse::<ChildIndex>().unwrap(), ChildIndex::Normal(0));
         assert_eq!("44".parse::<ChildIndex>().unwrap(), ChildIndex::Normal(44));
-        assert_eq!("44'".parse::<ChildIndex>().unwrap(), ChildIndex::Hardened(44));
-        assert_eq!("44h".parse::<ChildIndex>().unwrap(), ChildIndex::Hardened(44));
-        assert_eq!("44H".parse::<ChildIndex>().unwrap(), ChildIndex::Hardened(44));
+        assert_eq!(
+            "44'".parse::<ChildIndex>().unwrap(),
+            ChildIndex::Hardened(44)
+        );
+        assert_eq!(
+            "44h".parse::<ChildIndex>().unwrap(),
+            ChildIndex::Hardened(44)
+        );
+        assert_eq!(
+            "44H".parse::<ChildIndex>().unwrap(),
+            ChildIndex::Hardened(44)
+        );
     }
 
     #[test]

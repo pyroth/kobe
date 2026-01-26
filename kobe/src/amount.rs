@@ -8,12 +8,14 @@
 //! Ethereum denominations: Wei, Kwei, Mwei, Gwei, Szabo, Finney, Ether
 
 use core::fmt;
-use core::ops::{Add, Sub, Mul, Div};
+use core::ops::{Add, Div, Mul, Sub};
 
 /// Trait for cryptocurrency amount types.
 ///
 /// Implementations should provide conversion between base units and display units.
-pub trait Amount: Copy + Clone + fmt::Debug + fmt::Display + PartialEq + Eq + PartialOrd + Ord + Send + Sync {
+pub trait Amount:
+    Copy + Clone + fmt::Debug + fmt::Display + PartialEq + Eq + PartialOrd + Ord + Send + Sync
+{
     /// The number of decimal places for this currency.
     const DECIMALS: u8;
 
@@ -658,7 +660,10 @@ mod tests {
         fn test_ethereum_denomination_multiplier() {
             assert_eq!(EthereumDenomination::Wei.multiplier(), 1);
             assert_eq!(EthereumDenomination::Gwei.multiplier(), 1_000_000_000);
-            assert_eq!(EthereumDenomination::Ether.multiplier(), 1_000_000_000_000_000_000);
+            assert_eq!(
+                EthereumDenomination::Ether.multiplier(),
+                1_000_000_000_000_000_000
+            );
         }
 
         #[test]
@@ -674,7 +679,9 @@ mod tests {
         fn test_wei_to_denomination() {
             let wei = Wei::ONE_ETH;
             assert!((wei.to_denomination(EthereumDenomination::Ether) - 1.0).abs() < 0.0001);
-            assert!((wei.to_denomination(EthereumDenomination::Gwei) - 1_000_000_000.0).abs() < 1.0);
+            assert!(
+                (wei.to_denomination(EthereumDenomination::Gwei) - 1_000_000_000.0).abs() < 1.0
+            );
         }
 
         #[test]

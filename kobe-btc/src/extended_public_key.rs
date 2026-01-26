@@ -151,9 +151,8 @@ impl ExtendedPublicKey {
 
         // Convert back to public key
         let child_encoded = child_affine.to_encoded_point(true);
-        let child_public_key =
-            BtcPublicKey::from_compressed_bytes(child_encoded.as_bytes())
-                .map_err(|_| Error::InvalidPublicKey)?;
+        let child_public_key = BtcPublicKey::from_compressed_bytes(child_encoded.as_bytes())
+            .map_err(|_| Error::InvalidPublicKey)?;
 
         // Compute parent fingerprint
         let parent_hash = kobe::hash::hash160(&parent_bytes);
@@ -324,7 +323,8 @@ mod tests {
     fn test_xpub_from_xprv() {
         let xprv =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+        let xpub =
+            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         assert_eq!(xpub.depth(), 0);
         assert_eq!(xpub.child_index(), 0);
@@ -334,7 +334,8 @@ mod tests {
     fn test_xpub_serialization() {
         let xprv =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+        let xpub =
+            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         let serialized = xpub.to_xpub();
         assert!(serialized.starts_with("xpub"));
@@ -348,7 +349,8 @@ mod tests {
     fn test_xpub_bip32_vector1() {
         let xprv =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+        let xpub =
+            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // BIP-32 test vector 1 chain m expected xpub
         assert_eq!(
@@ -363,16 +365,26 @@ mod tests {
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
 
         // First derive hardened from xprv, then get xpub
-        let xprv_child = xprv.derive_child_index(crate::ChildIndex::Hardened(0)).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv_child, Network::Mainnet);
+        let xprv_child = xprv
+            .derive_child_index(crate::ChildIndex::Hardened(0))
+            .unwrap();
+        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(
+            &xprv_child,
+            Network::Mainnet,
+        );
 
         // Now derive non-hardened from xpub
         let xpub_child = xpub.derive_child(1).unwrap();
         assert_eq!(xpub_child.depth(), 2);
 
         // Compare with derivation from xprv
-        let xprv_grandchild = xprv_child.derive_child_index(crate::ChildIndex::Normal(1)).unwrap();
-        let xpub_from_prv = ExtendedPublicKey::from_extended_private_key_with_network(&xprv_grandchild, Network::Mainnet);
+        let xprv_grandchild = xprv_child
+            .derive_child_index(crate::ChildIndex::Normal(1))
+            .unwrap();
+        let xpub_from_prv = ExtendedPublicKey::from_extended_private_key_with_network(
+            &xprv_grandchild,
+            Network::Mainnet,
+        );
 
         assert_eq!(xpub_child.to_xpub(), xpub_from_prv.to_xpub());
     }
@@ -381,7 +393,8 @@ mod tests {
     fn test_xpub_hardened_fails() {
         let xprv =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+        let xpub =
+            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // Hardened derivation should fail
         let result = xpub.derive_child(0x80000000);
@@ -392,7 +405,8 @@ mod tests {
     fn test_xpub_derive_path() {
         let xprv =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
+        let xpub =
+            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Mainnet);
 
         // Non-hardened path should work
         let derived = xpub.derive_path_str("m/0/1/2").unwrap();
@@ -407,7 +421,8 @@ mod tests {
     fn test_testnet_tpub() {
         let xprv =
             ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
-        let xpub = ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Testnet);
+        let xpub =
+            ExtendedPublicKey::from_extended_private_key_with_network(&xprv, Network::Testnet);
 
         let tpub = xpub.to_xpub();
         assert!(tpub.starts_with("tpub"));

@@ -4,7 +4,7 @@
 
 use crate::address::{AddressFormat, BtcAddress};
 use crate::network::Network;
-use k256::ecdsa::{signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey};
+use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
 use kobe::{Error, Result, Signature};
 
 // Import traits to bring methods into scope
@@ -125,7 +125,6 @@ impl kobe::PublicKey for BtcPublicKey {
 // ============================================================================
 
 impl BtcPublicKey {
-
     /// Get the x-only public key (32 bytes) for Taproot.
     ///
     /// This returns only the x-coordinate of the public key point,

@@ -156,7 +156,9 @@ impl BtcTransaction {
         sighash_type: SigHashType,
     ) -> Result<[u8; 32]> {
         let input = &self.inputs[input_index];
-        let amount = input.amount.ok_or(Error::msg("SegWit input requires amount"))?;
+        let amount = input
+            .amount
+            .ok_or(Error::msg("SegWit input requires amount"))?;
 
         let mut data = Vec::new();
 
@@ -426,7 +428,6 @@ pub fn p2wpkh_script(pubkey_hash: &[u8; 20]) -> Vec<u8> {
     script.extend_from_slice(pubkey_hash);
     script
 }
-
 
 #[cfg(test)]
 mod tests {

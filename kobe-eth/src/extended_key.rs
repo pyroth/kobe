@@ -119,11 +119,7 @@ impl ExtendedPrivateKey {
             return Err(Error::MaxDepthExceeded);
         }
 
-        let child_index = if hardened {
-            index | 0x80000000
-        } else {
-            index
-        };
+        let child_index = if hardened { index | 0x80000000 } else { index };
 
         let mut mac =
             HmacSha512::new_from_slice(&self.chain_code).map_err(|_| Error::CryptoError)?;

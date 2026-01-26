@@ -26,7 +26,6 @@ use sha2::Sha512;
 use sha2::{Digest, Sha256};
 use zeroize::Zeroize;
 
-
 /// Get wordlist for a specific language.
 #[cfg(feature = "alloc")]
 fn get_wordlist_for_language(language: Language) -> Vec<&'static str> {
@@ -272,7 +271,10 @@ impl kobe::Mnemonic for Mnemonic {
         let mut entropy = vec![0u8; entropy_bytes];
         rng.fill_bytes(&mut entropy);
 
-        Ok(Self { entropy, language: Language::English })
+        Ok(Self {
+            entropy,
+            language: Language::English,
+        })
     }
 
     fn from_phrase(phrase: &str) -> Result<Self> {

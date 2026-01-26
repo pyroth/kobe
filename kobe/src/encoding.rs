@@ -123,8 +123,7 @@ pub fn bech32_encode(hrp: &str, version: u8, data: &[u8]) -> Result<String> {
     use bech32::Hrp;
 
     let hrp = Hrp::parse(hrp).map_err(|_| Error::InvalidEncoding)?;
-    let witness_version =
-        bech32::Fe32::try_from(version).map_err(|_| Error::InvalidEncoding)?;
+    let witness_version = bech32::Fe32::try_from(version).map_err(|_| Error::InvalidEncoding)?;
 
     bech32::segwit::encode(hrp, witness_version, data).map_err(|_| Error::InvalidEncoding)
 }
@@ -301,7 +300,10 @@ mod tests {
                 "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"
             );
             let encoded = base58check_encode(&version, &payload);
-            assert_eq!(encoded, "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ");
+            assert_eq!(
+                encoded,
+                "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ"
+            );
         }
 
         #[test]
@@ -312,7 +314,10 @@ mod tests {
                 "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d01"
             );
             let encoded = base58check_encode(&version, &payload);
-            assert_eq!(encoded, "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617");
+            assert_eq!(
+                encoded,
+                "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
+            );
         }
 
         #[test]
@@ -520,8 +525,9 @@ mod tests {
         #[test]
         fn test_bech32_encode_taproot() {
             // Encode Taproot address (uses Bech32m)
-            let data =
-                hex_literal::hex!("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+            let data = hex_literal::hex!(
+                "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            );
             let encoded = bech32_encode("bc", 1, &data).unwrap();
             // Note: Our encode function uses Bech32m, so it matches Taproot encoding
             assert!(encoded.starts_with("bc1p"));
@@ -538,8 +544,18 @@ mod tests {
         #[test]
         fn test_bech32_roundtrip() {
             let test_cases: &[(u8, &[u8])] = &[
-                (1, &hex_literal::hex!("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")),
-                (1, &hex_literal::hex!("0000000000000000000000000000000000000000000000000000000000000001")),
+                (
+                    1,
+                    &hex_literal::hex!(
+                        "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                    ),
+                ),
+                (
+                    1,
+                    &hex_literal::hex!(
+                        "0000000000000000000000000000000000000000000000000000000000000001"
+                    ),
+                ),
             ];
 
             for (version, data) in test_cases {

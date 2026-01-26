@@ -439,7 +439,8 @@ mod tests {
 
     #[test]
     fn test_master_key_from_seed() {
-        let xkey = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let xkey =
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(xkey.depth(), 0);
 
         let xprv = xkey.to_xprv();
@@ -448,7 +449,8 @@ mod tests {
 
     #[test]
     fn test_bip32_vector1_chain_m() {
-        let xkey = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let xkey =
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         assert_eq!(
             xkey.to_xprv(),
             "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
@@ -457,7 +459,8 @@ mod tests {
 
     #[test]
     fn test_bip32_vector1_chain_m_0h() {
-        let master = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let master =
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let child = master.derive_child_index(ChildIndex::Hardened(0)).unwrap();
         assert_eq!(
             child.to_xprv(),
@@ -467,7 +470,8 @@ mod tests {
 
     #[test]
     fn test_derive_path() {
-        let master = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let master =
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let derived = master.derive_path_str("m/0'").unwrap();
         assert_eq!(derived.depth(), 1);
 
@@ -477,7 +481,8 @@ mod tests {
 
     #[test]
     fn test_xprv_roundtrip() {
-        let master = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
+        let master =
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Mainnet).unwrap();
         let xprv = master.to_xprv();
         let recovered = ExtendedPrivateKey::from_xprv(&xprv).unwrap();
         assert_eq!(master.to_xprv(), recovered.to_xprv());
@@ -485,7 +490,8 @@ mod tests {
 
     #[test]
     fn test_testnet_tprv() {
-        let xkey = ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
+        let xkey =
+            ExtendedPrivateKey::from_seed_with_network(TEST_SEED_1, Network::Testnet).unwrap();
         let tprv = xkey.to_xprv();
         assert!(tprv.starts_with("tprv"));
     }

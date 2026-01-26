@@ -3,9 +3,8 @@
 //! Implements `kobe::PublicKey` trait for unified wallet interface.
 
 use crate::address::EthAddress;
-use k256::ecdsa::{signature::hazmat::PrehashVerifier, SigningKey, VerifyingKey};
+use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
 use kobe::{Error, Result, Signature};
-
 
 /// Ethereum public key based on secp256k1.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,7 +78,6 @@ impl kobe::PublicKey for EthPublicKey {
 // ============================================================================
 
 impl EthPublicKey {
-
     /// Recover public key from signature and message hash.
     pub fn recover_from_prehash(hash: &[u8; 32], signature: &Signature) -> Result<Self> {
         use k256::ecdsa::RecoveryId;
