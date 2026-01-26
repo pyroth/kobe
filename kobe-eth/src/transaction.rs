@@ -191,42 +191,42 @@ impl EthTransaction {
 
     /// RLP encode for signing (unsigned transaction with chain_id).
     fn rlp_encode_for_signing(&self) -> Vec<u8> {
-        let mut items = Vec::new();
-
-        items.push(rlp_encode_u64(self.nonce));
-        items.push(rlp_encode_u128(self.gas_price));
-        items.push(rlp_encode_u64(self.gas_limit));
-        items.push(match &self.to {
-            Some(addr) => rlp_encode_bytes(addr),
-            None => rlp_encode_bytes(&[]),
-        });
-        items.push(rlp_encode_u128(self.value));
-        items.push(rlp_encode_bytes(&self.data));
-        items.push(rlp_encode_u64(self.chain_id));
-        items.push(rlp_encode_u64(0)); // empty r
-        items.push(rlp_encode_u64(0)); // empty s
+        let items = vec![
+            rlp_encode_u64(self.nonce),
+            rlp_encode_u128(self.gas_price),
+            rlp_encode_u64(self.gas_limit),
+            match &self.to {
+                Some(addr) => rlp_encode_bytes(addr),
+                None => rlp_encode_bytes(&[]),
+            },
+            rlp_encode_u128(self.value),
+            rlp_encode_bytes(&self.data),
+            rlp_encode_u64(self.chain_id),
+            rlp_encode_u64(0), // empty r
+            rlp_encode_u64(0), // empty s
+        ];
 
         rlp_encode_list(&items)
     }
 
     /// Serialize to bytes (RLP encoded).
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut items = Vec::new();
-
-        items.push(rlp_encode_u64(self.nonce));
-        items.push(rlp_encode_u128(self.gas_price));
-        items.push(rlp_encode_u64(self.gas_limit));
-        items.push(match &self.to {
-            Some(addr) => rlp_encode_bytes(addr),
-            None => rlp_encode_bytes(&[]),
-        });
-        items.push(rlp_encode_u128(self.value));
-        items.push(rlp_encode_bytes(&self.data));
+        let mut items = vec![
+            rlp_encode_u64(self.nonce),
+            rlp_encode_u128(self.gas_price),
+            rlp_encode_u64(self.gas_limit),
+            match &self.to {
+                Some(addr) => rlp_encode_bytes(addr),
+                None => rlp_encode_bytes(&[]),
+            },
+            rlp_encode_u128(self.value),
+            rlp_encode_bytes(&self.data),
+        ];
 
         if let (Some(v), Some(r), Some(s)) = (self.v, &self.r, &self.s) {
             items.push(rlp_encode_u64(v));
-            items.push(rlp_encode_bytes(&trim_leading_zeros(r)));
-            items.push(rlp_encode_bytes(&trim_leading_zeros(s)));
+            items.push(rlp_encode_bytes(trim_leading_zeros(r)));
+            items.push(rlp_encode_bytes(trim_leading_zeros(s)));
         }
 
         rlp_encode_list(&items)
@@ -401,49 +401,48 @@ impl Eip1559Transaction {
 
     /// RLP encode for signing.
     fn rlp_encode_for_signing(&self) -> Vec<u8> {
-        let mut items = Vec::new();
-
-        items.push(rlp_encode_u64(self.chain_id));
-        items.push(rlp_encode_u64(self.nonce));
-        items.push(rlp_encode_u128(self.max_priority_fee_per_gas));
-        items.push(rlp_encode_u128(self.max_fee_per_gas));
-        items.push(rlp_encode_u64(self.gas_limit));
-        items.push(match &self.to {
-            Some(addr) => rlp_encode_bytes(addr),
-            None => rlp_encode_bytes(&[]),
-        });
-        items.push(rlp_encode_u128(self.value));
-        items.push(rlp_encode_bytes(&self.data));
-        items.push(rlp_encode_access_list(&self.access_list));
+        let items = vec![
+            rlp_encode_u64(self.chain_id),
+            rlp_encode_u64(self.nonce),
+            rlp_encode_u128(self.max_priority_fee_per_gas),
+            rlp_encode_u128(self.max_fee_per_gas),
+            rlp_encode_u64(self.gas_limit),
+            match &self.to {
+                Some(addr) => rlp_encode_bytes(addr),
+                None => rlp_encode_bytes(&[]),
+            },
+            rlp_encode_u128(self.value),
+            rlp_encode_bytes(&self.data),
+            rlp_encode_access_list(&self.access_list),
+        ];
 
         rlp_encode_list(&items)
     }
 
     /// Serialize to bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut items = Vec::new();
-
-        items.push(rlp_encode_u64(self.chain_id));
-        items.push(rlp_encode_u64(self.nonce));
-        items.push(rlp_encode_u128(self.max_priority_fee_per_gas));
-        items.push(rlp_encode_u128(self.max_fee_per_gas));
-        items.push(rlp_encode_u64(self.gas_limit));
-        items.push(match &self.to {
-            Some(addr) => rlp_encode_bytes(addr),
-            None => rlp_encode_bytes(&[]),
-        });
-        items.push(rlp_encode_u128(self.value));
-        items.push(rlp_encode_bytes(&self.data));
-        items.push(rlp_encode_access_list(&self.access_list));
+        let mut items = vec![
+            rlp_encode_u64(self.chain_id),
+            rlp_encode_u64(self.nonce),
+            rlp_encode_u128(self.max_priority_fee_per_gas),
+            rlp_encode_u128(self.max_fee_per_gas),
+            rlp_encode_u64(self.gas_limit),
+            match &self.to {
+                Some(addr) => rlp_encode_bytes(addr),
+                None => rlp_encode_bytes(&[]),
+            },
+            rlp_encode_u128(self.value),
+            rlp_encode_bytes(&self.data),
+            rlp_encode_access_list(&self.access_list),
+        ];
 
         if let (Some(y_parity), Some(r), Some(s)) = (self.y_parity, &self.r, &self.s) {
             items.push(rlp_encode_u64(y_parity as u64));
-            items.push(rlp_encode_bytes(&trim_leading_zeros(r)));
-            items.push(rlp_encode_bytes(&trim_leading_zeros(s)));
+            items.push(rlp_encode_bytes(trim_leading_zeros(r)));
+            items.push(rlp_encode_bytes(trim_leading_zeros(s)));
         }
 
-        let mut result = Vec::new();
-        result.push(0x02); // EIP-1559 type
+        let mut result = vec![0x02]; // EIP-1559 type
         result.extend_from_slice(&rlp_encode_list(&items));
         result
     }

@@ -13,11 +13,10 @@ use alloc::string::String;
 use crate::address::EthAddress;
 use crate::public_key::EthPublicKey;
 use k256::ecdsa::SigningKey;
-use kobe::rand_core::{CryptoRng, RngCore};
-use kobe::{Error, Result, Signature};
-
 use kobe::PrivateKey as _;
 use kobe::PublicKey as _;
+use kobe::rand_core::{CryptoRng, RngCore};
+use kobe::{Error, Result, Signature};
 use sha3::{Digest, Keccak256};
 use zeroize::Zeroize;
 

@@ -28,9 +28,10 @@ use alloc::string::String;
 /// Ethereum network identifier.
 ///
 /// Provides type-safe network selection with common networks pre-defined.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Network {
     /// Ethereum Mainnet (Chain ID: 1)
+    #[default]
     Mainnet,
     /// Sepolia Testnet (Chain ID: 11155111)
     Sepolia,
@@ -77,7 +78,7 @@ impl Network {
     }
 
     /// Get the network name.
-    pub const fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             Self::Mainnet => "Ethereum Mainnet",
             Self::Sepolia => "Sepolia Testnet",
@@ -89,7 +90,7 @@ impl Network {
             Self::Avalanche => "Avalanche C-Chain",
             Self::Base => "Base",
             #[cfg(feature = "alloc")]
-            Self::Custom { name, .. } => name.as_str(),
+            Self::Custom { name, .. } => name,
         }
     }
 
@@ -211,12 +212,6 @@ impl Network {
             11155111 => Some(Self::Sepolia),
             _ => None,
         }
-    }
-}
-
-impl Default for Network {
-    fn default() -> Self {
-        Self::Mainnet
     }
 }
 

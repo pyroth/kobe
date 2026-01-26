@@ -344,7 +344,7 @@ impl BtcTransaction {
         if self.segwit && self.has_witness() {
             // vsize = (weight + 3) / 4
             // weight = base_size * 3 + total_size
-            (base_size * 3 + total_size + 3) / 4
+            (base_size * 3 + total_size).div_ceil(4)
         } else {
             total_size
         }

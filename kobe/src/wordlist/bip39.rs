@@ -20,13 +20,14 @@ pub const KOREAN: &str = include_str!("./bip39/korean.txt");
 pub const SPANISH: &str = include_str!("./bip39/spanish.txt");
 
 /// BIP-39 supported languages.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Language {
     /// Chinese Simplified
     ChineseSimplified,
     /// Chinese Traditional
     ChineseTraditional,
     /// English (default)
+    #[default]
     English,
     /// French
     French,
@@ -108,12 +109,6 @@ impl Language {
             Self::Korean => "ko",
             Self::Spanish => "es",
         }
-    }
-}
-
-impl Default for Language {
-    fn default() -> Self {
-        Self::English
     }
 }
 

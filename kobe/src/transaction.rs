@@ -173,10 +173,11 @@ impl Eip1559TxParams {
 }
 
 /// Bitcoin signature hash types.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum SigHashType {
     /// Sign all inputs and outputs.
+    #[default]
     All = 0x01,
     /// Sign all inputs, no outputs.
     None = 0x02,
@@ -199,12 +200,6 @@ impl SigHashType {
     /// Get the base type (without ANYONECANPAY).
     pub const fn base_type(&self) -> u8 {
         (*self as u8) & 0x1f
-    }
-}
-
-impl Default for SigHashType {
-    fn default() -> Self {
-        Self::All
     }
 }
 
