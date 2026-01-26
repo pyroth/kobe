@@ -21,6 +21,8 @@ use sha3::{Digest, Keccak256};
 use zeroize::Zeroize;
 
 /// Ethereum private key based on secp256k1.
+///
+/// Provides secure key management with automatic zeroization on drop.
 #[derive(Clone)]
 pub struct EthPrivateKey {
     inner: SigningKey,
@@ -87,6 +89,8 @@ impl kobe::PrivateKey for EthPrivateKey {
 
 impl EthPrivateKey {
     /// Get the corresponding address.
+    #[inline]
+    #[must_use]
     pub fn address(&self) -> EthAddress {
         self.public_key().to_address()
     }
@@ -111,12 +115,14 @@ impl EthPrivateKey {
     }
 
     /// Get access to the underlying signing key.
+    #[inline]
     pub fn as_signing_key(&self) -> &SigningKey {
         &self.inner
     }
 
     /// Export as hex string (without 0x prefix).
     #[cfg(feature = "alloc")]
+    #[must_use]
     pub fn to_hex(&self) -> String {
         let bytes = self.to_bytes();
         let mut result = String::with_capacity(64);

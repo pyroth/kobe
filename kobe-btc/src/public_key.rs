@@ -10,6 +10,9 @@ use kobe::{Error, Result, Signature};
 use kobe::PublicKey as _;
 
 /// Bitcoin public key based on secp256k1.
+///
+/// Supports both compressed and uncompressed formats for signature verification
+/// and address derivation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BtcPublicKey {
     inner: VerifyingKey,
@@ -56,11 +59,15 @@ impl BtcPublicKey {
     }
 
     /// Check if using compressed format.
+    #[inline]
+    #[must_use]
     pub const fn is_compressed(&self) -> bool {
         self.compressed
     }
 
     /// Serialize to compressed bytes (33 bytes).
+    #[inline]
+    #[must_use]
     pub fn to_compressed_bytes(&self) -> [u8; 33] {
         let point = self.inner.to_encoded_point(true);
         let mut result = [0u8; 33];
@@ -120,6 +127,8 @@ impl BtcPublicKey {
     ///
     /// This returns only the x-coordinate of the public key point,
     /// which is used in BIP-340 Schnorr signatures and P2TR addresses.
+    #[inline]
+    #[must_use]
     pub fn to_x_only(&self) -> [u8; 32] {
         let point = self.inner.to_encoded_point(true);
         let bytes = point.as_bytes();
@@ -132,6 +141,8 @@ impl BtcPublicKey {
     /// Check if the public key has an even y-coordinate.
     ///
     /// Used for Taproot to determine if key needs negation.
+    #[inline]
+    #[must_use]
     pub fn has_even_y(&self) -> bool {
         let point = self.inner.to_encoded_point(true);
         let prefix = point.as_bytes()[0];
@@ -139,6 +150,7 @@ impl BtcPublicKey {
     }
 
     /// Get the hash160 of the public key (for P2PKH addresses).
+    #[must_use]
     pub fn hash160(&self) -> [u8; 20] {
         let bytes = if self.compressed {
             self.to_compressed_bytes().to_vec()

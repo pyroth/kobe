@@ -25,6 +25,9 @@ type HmacSha512 = Hmac<Sha512>;
 pub use kobe::ChildIndex;
 
 /// BIP-32 Extended Private Key for Bitcoin.
+///
+/// Provides hierarchical deterministic key derivation following the BIP-32 standard.
+/// Keys are automatically zeroized on drop for security.
 #[derive(Clone)]
 pub struct BtcExtendedPrivateKey {
     /// The underlying private key
@@ -252,36 +255,48 @@ impl BtcExtendedPrivateKey {
     }
 
     /// Get a reference to the underlying private key.
+    #[inline]
     pub fn private_key_ref(&self) -> &BtcPrivateKey {
         &self.private_key
     }
 
     /// Get the corresponding public key.
+    #[inline]
+    #[must_use]
     pub fn public_key(&self) -> BtcPublicKey {
         kobe::PrivateKey::public_key(&self.private_key)
     }
 
     /// Get a reference to the chain code.
+    #[inline]
     pub fn chain_code_ref(&self) -> &[u8; 32] {
         &self.chain_code
     }
 
     /// Get the depth in the derivation tree.
+    #[inline]
+    #[must_use]
     pub const fn depth_value(&self) -> u8 {
         self.depth
     }
 
     /// Get the parent fingerprint.
+    #[inline]
+    #[must_use]
     pub const fn parent_fingerprint(&self) -> &[u8; 4] {
         &self.parent_fingerprint
     }
 
     /// Get the child index.
+    #[inline]
+    #[must_use]
     pub const fn child_index(&self) -> ChildIndex {
         self.child_index
     }
 
     /// Get the network.
+    #[inline]
+    #[must_use]
     pub const fn network(&self) -> Network {
         self.network
     }

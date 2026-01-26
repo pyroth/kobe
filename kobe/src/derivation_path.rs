@@ -23,7 +23,7 @@ pub enum ChildIndex {
 
 impl ChildIndex {
     /// The offset for hardened indices (2^31).
-    pub const HARDENED_OFFSET: u32 = 0x80000000;
+    pub const HARDENED_OFFSET: u32 = 0x8000_0000;
 
     /// Create a normal (non-hardened) child index.
     pub const fn normal(index: u32) -> Result<Self> {
@@ -192,7 +192,7 @@ impl DerivationPath {
 
     /// Check if any index in the path is hardened.
     pub fn has_hardened(&self) -> bool {
-        self.indices.iter().any(|i| i.is_hardened())
+        self.indices.iter().any(ChildIndex::is_hardened)
     }
 
     /// Append a child index to the path.

@@ -7,6 +7,8 @@ use k256::ecdsa::{SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
 use kobe::{Error, Result, Signature};
 
 /// Ethereum public key based on secp256k1.
+///
+/// Provides signature verification and address derivation for Ethereum.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EthPublicKey {
     inner: VerifyingKey,
@@ -21,6 +23,8 @@ impl EthPublicKey {
     }
 
     /// Get the raw 64-byte public key (without 0x04 prefix).
+    #[inline]
+    #[must_use]
     pub fn to_raw_bytes(&self) -> [u8; 64] {
         let uncompressed = kobe::PublicKey::to_uncompressed_bytes(self);
         let mut result = [0u8; 64];
@@ -71,6 +75,10 @@ impl kobe::PublicKey for EthPublicKey {
 
 impl EthPublicKey {
     /// Recover public key from signature and message hash.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signature is invalid or recovery fails.
     pub fn recover_from_prehash(hash: &[u8; 32], signature: &Signature) -> Result<Self> {
         use k256::ecdsa::RecoveryId;
 
@@ -91,6 +99,10 @@ impl EthPublicKey {
     /// Recover public key from an EIP-191 personal signed message.
     ///
     /// This is the inverse of `EthPrivateKey::sign_message`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signature is invalid or recovery fails.
     pub fn recover_from_message(message: &[u8], signature: &Signature) -> Result<Self> {
         let hash = eip191_hash_message(message);
         Self::recover_from_prehash(&hash, signature)

@@ -32,7 +32,7 @@ impl TxInput {
             prev_txid,
             prev_vout,
             script_sig: Vec::new(),
-            sequence: 0xffffffff,
+            sequence: 0xffff_ffff,
             witness: Vec::new(),
             amount,
         }
@@ -40,7 +40,7 @@ impl TxInput {
 
     /// Create with RBF (Replace-By-Fee) enabled.
     pub fn with_rbf(mut self) -> Self {
-        self.sequence = 0xfffffffd;
+        self.sequence = 0xffff_fffd;
         self
     }
 }

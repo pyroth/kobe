@@ -16,6 +16,9 @@ use kobe::{Error, Result, Signature};
 use zeroize::Zeroize;
 
 /// Bitcoin private key based on secp256k1.
+///
+/// Provides secure key management with automatic zeroization on drop.
+/// Supports both compressed and uncompressed public key formats.
 #[derive(Clone)]
 pub struct BtcPrivateKey {
     inner: SigningKey,
@@ -92,6 +95,8 @@ impl BtcPrivateKey {
     }
 
     /// Check if using compressed public key.
+    #[inline]
+    #[must_use]
     pub const fn is_compressed(&self) -> bool {
         self.compressed
     }
@@ -149,6 +154,7 @@ impl BtcPrivateKey {
 
     /// Export as WIF (Wallet Import Format).
     #[cfg(feature = "alloc")]
+    #[must_use]
     pub fn to_wif(&self, network: Network) -> String {
         let mut data = [0u8; 34];
         data[0] = network.wif_prefix();
