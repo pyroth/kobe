@@ -1,5 +1,8 @@
 //! Ethereum address derivation from a unified wallet.
 
+#[cfg(feature = "alloc")]
+use alloc::{format, string::{String, ToString}, vec::Vec};
+
 use hmac::{Hmac, Mac};
 use k256::{Scalar, ecdsa::SigningKey, elliptic_curve::PrimeField};
 use kobe_core::Wallet;
@@ -212,8 +215,12 @@ mod tests {
         assert_eq!(addrs.len(), 5);
 
         // All addresses should be unique
-        let unique: std::collections::HashSet<_> = addrs.iter().map(|a| &a.address).collect();
-        assert_eq!(unique.len(), 5);
+        let mut seen = alloc::vec::Vec::new();
+        for addr in &addrs {
+            assert!(!seen.contains(&addr.address));
+            seen.push(addr.address.clone());
+        }
+        assert_eq!(seen.len(), 5);
     }
 
     #[test]

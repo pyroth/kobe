@@ -1,19 +1,25 @@
 [package]
 name = "kobe-eth"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Ethereum wallet utilities for Kobe CLI"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pyor/kobe"
-keywords = ["ethereum", "wallet", "crypto"]
+keywords = ["ethereum", "wallet", "crypto", "no_std"]
+categories = ["cryptography", "no-std"]
+
+[features]
+default = ["std"]
+std = ["alloc", "kobe-core/std", "k256/std", "hmac/std", "sha2/std", "hex/std", "zeroize/std"]
+alloc = ["kobe-core/alloc", "hex/alloc", "zeroize/alloc"]
+# Enable random key generation for StandardWallet (requires std)
+rand = ["std"]
 
 [dependencies]
 kobe-core.workspace = true
 alloy-primitives.workspace = true
-bip39.workspace = true
 k256.workspace = true
 hmac.workspace = true
 sha2.workspace = true
-rand.workspace = true
 hex.workspace = true
 zeroize.workspace = true

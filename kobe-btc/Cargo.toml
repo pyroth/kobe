@@ -1,16 +1,23 @@
 [package]
 name = "kobe-btc"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Bitcoin wallet utilities for Kobe CLI"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pyor/kobe"
-keywords = ["bitcoin", "wallet", "crypto"]
+keywords = ["bitcoin", "wallet", "crypto", "no_std"]
+categories = ["cryptography", "no-std"]
+
+[features]
+default = ["std"]
+std = ["alloc", "kobe-core/std", "bitcoin/std", "bip39/std", "hex/std", "zeroize/std"]
+alloc = ["kobe-core/alloc", "bip39/alloc", "hex/alloc", "zeroize/alloc"]
+# Enable random key generation for StandardWallet
+rand = ["std", "bitcoin/rand-std"]
 
 [dependencies]
 kobe-core.workspace = true
 bitcoin.workspace = true
 bip39.workspace = true
-rand.workspace = true
 hex.workspace = true
 zeroize.workspace = true

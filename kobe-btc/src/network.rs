@@ -1,6 +1,7 @@
 //! Bitcoin network types.
 
 use bitcoin::Network as BtcNetwork;
+use core::fmt;
 
 /// Supported Bitcoin networks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -44,8 +45,8 @@ impl Network {
     }
 }
 
-impl std::fmt::Display for Network {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Network {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }

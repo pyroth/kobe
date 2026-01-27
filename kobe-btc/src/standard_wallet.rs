@@ -2,6 +2,9 @@
 //!
 //! A standard wallet uses a single randomly generated private key.
 
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
+
 use bitcoin::{Address, NetworkKind, PrivateKey, PublicKey, key::CompressedPublicKey};
 use zeroize::Zeroizing;
 
@@ -31,6 +34,11 @@ impl StandardWallet {
     /// # Errors
     ///
     /// Returns an error if key generation fails.
+    ///
+    /// # Note
+    ///
+    /// This function requires the `rand` feature to be enabled.
+    #[cfg(feature = "rand")]
     pub fn generate(network: Network, address_type: AddressType) -> Result<Self, Error> {
         let secp = bitcoin::secp256k1::Secp256k1::new();
         let (secret_key, _) = secp.generate_keypair(&mut bitcoin::secp256k1::rand::thread_rng());
@@ -137,6 +145,7 @@ impl StandardWallet {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_mainnet_p2wpkh() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2wpkh).unwrap();
@@ -144,18 +153,21 @@ mod tests {
         assert_eq!(wallet.network(), Network::Mainnet);
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_mainnet_p2pkh() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2pkh).unwrap();
         assert!(wallet.address_string().starts_with('1'));
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_mainnet_p2sh() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2shP2wpkh).unwrap();
         assert!(wallet.address_string().starts_with('3'));
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_testnet() {
         let wallet = StandardWallet::generate(Network::Testnet, AddressType::P2wpkh).unwrap();

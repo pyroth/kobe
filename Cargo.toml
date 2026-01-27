@@ -12,16 +12,16 @@ kobe-eth = { path = "./kobe-eth" }
 clap = { version = "4.5", features = ["derive"] }
 colored = "3.0"
 
-# Crypto dependencies
-alloy-primitives = { version = "1.5", features = ["k256"] }
-bitcoin = { version = "0.32", features = ["rand-std"] }
-bip39 = { version = "2.1", features = ["rand"] }
-k256 = { version = "0.13", features = ["ecdsa"] }
-hmac = "0.12"
-sha2 = "0.10"
-rand = "0.9"
-hex = "0.4"
-zeroize = { version = "1.7", features = ["derive"] }
+# Crypto dependencies (no default-features for no_std support)
+alloy-primitives = { version = "1.5", default-features = false, features = ["k256"] }
+bitcoin = { version = "0.32", default-features = false }
+bip39 = { version = "2.1", default-features = false }
+k256 = { version = "0.13", default-features = false, features = ["ecdsa"] }
+hmac = { version = "0.12", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+rand = { version = "0.9", default-features = false }
+hex = { version = "0.4", default-features = false }
+zeroize = { version = "1.7", default-features = false, features = ["derive"] }
 
 [profile.release]
 lto = true

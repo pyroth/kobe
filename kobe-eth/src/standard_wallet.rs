@@ -2,15 +2,15 @@
 //!
 //! A standard wallet uses a single randomly generated private key.
 
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+
 use alloy_primitives::Address;
 use k256::ecdsa::SigningKey;
 use zeroize::Zeroizing;
 
 use crate::Error;
 use crate::utils::{public_key_to_address, to_checksum_address};
-
-// Re-export rand from k256 to avoid version conflicts
-use k256::elliptic_curve::rand_core::OsRng;
 
 /// A standard Ethereum wallet with a single private key.
 ///
@@ -30,7 +30,13 @@ impl StandardWallet {
     /// # Errors
     ///
     /// Returns an error if key generation fails.
+    ///
+    /// # Note
+    ///
+    /// This function requires the `rand` feature to be enabled.
+    #[cfg(feature = "rand")]
     pub fn generate() -> Result<Self, Error> {
+        use k256::elliptic_curve::rand_core::OsRng;
         let private_key = SigningKey::random(&mut OsRng);
         let address = Self::derive_address(&private_key);
 
@@ -96,6 +102,7 @@ impl StandardWallet {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate() {
         let wallet = StandardWallet::generate().unwrap();
@@ -103,6 +110,7 @@ mod tests {
         assert_eq!(wallet.address_string().len(), 42);
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_from_private_key() {
         let wallet = StandardWallet::generate().unwrap();
@@ -112,8 +120,10 @@ mod tests {
         assert_eq!(wallet.address_string(), imported.address_string());
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_from_private_key_with_prefix() {
+        use alloc::format;
         let wallet = StandardWallet::generate().unwrap();
         let pk_hex = format!("0x{}", wallet.private_key_hex().as_str());
 

@@ -1,6 +1,6 @@
 [package]
 name = "kobe"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "A multi-chain cryptocurrency wallet CLI tool"
 license = "MIT OR Apache-2.0"
@@ -13,11 +13,10 @@ name = "kobe"
 path = "src/main.rs"
 
 [dependencies]
-kobe-core.workspace = true
-kobe-btc.workspace = true
-kobe-eth.workspace = true
+kobe-core = { workspace = true, features = ["std", "rand"] }
+kobe-btc = { workspace = true, features = ["std", "rand"] }
+kobe-eth = { workspace = true, features = ["std", "rand"] }
 clap.workspace = true
 colored.workspace = true
-rand.workspace = true
 hex.workspace = true
 zeroize.workspace = true

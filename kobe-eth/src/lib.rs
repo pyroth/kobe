@@ -2,9 +2,15 @@
 //!
 //! Provides Ethereum address derivation from a unified [`kobe_core::Wallet`].
 //!
+//! # Features
+//!
+//! - `std` (default): Enable standard library support
+//! - `alloc`: Enable heap allocation without full std (for `no_std` environments)
+//! - `rand`: Enable random key generation for `StandardWallet`
+//!
 //! # Usage
 //!
-//! ```
+//! ```ignore
 //! use kobe_core::Wallet;
 //! use kobe_eth::Deriver;
 //!
@@ -17,11 +23,16 @@
 //! println!("Address: {}", addr.address);
 //! ```
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 mod deriver;
 mod error;
+mod standard_wallet;
 mod utils;
-mod wallet;
 
 pub use deriver::{DerivedAddress, Deriver};
 pub use error::Error;
-pub use wallet::StandardWallet;
+pub use standard_wallet::StandardWallet;

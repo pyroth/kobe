@@ -1,6 +1,10 @@
 //! Bitcoin address derivation from a unified wallet.
 
+#[cfg(feature = "alloc")]
+use alloc::{string::{String, ToString}, vec::Vec};
+
 use bitcoin::{Address, PrivateKey, PublicKey, bip32::Xpriv, key::CompressedPublicKey};
+use core::marker::PhantomData;
 use kobe_core::Wallet;
 use zeroize::Zeroizing;
 
@@ -17,7 +21,7 @@ pub struct Deriver<'a> {
     /// Network.
     network: Network,
     /// Reference to the wallet (for lifetime tracking).
-    _wallet: std::marker::PhantomData<&'a Wallet>,
+    _wallet: PhantomData<&'a Wallet>,
 }
 
 /// A derived Bitcoin address with associated keys.
@@ -47,7 +51,7 @@ impl<'a> Deriver<'a> {
         Ok(Self {
             master_key,
             network,
-            _wallet: std::marker::PhantomData,
+            _wallet: PhantomData,
         })
     }
 
@@ -211,8 +215,12 @@ mod tests {
         assert_eq!(addrs.len(), 5);
 
         // All addresses should be unique
-        let unique: std::collections::HashSet<_> = addrs.iter().map(|a| &a.address).collect();
-        assert_eq!(unique.len(), 5);
+        let mut seen = alloc::vec::Vec::new();
+        for addr in &addrs {
+            assert!(!seen.contains(&addr.address));
+            seen.push(addr.address.clone());
+        }
+        assert_eq!(seen.len(), 5);
     }
 
     #[test]

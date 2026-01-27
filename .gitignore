@@ -24,9 +24,3 @@ target
 # Added by cargo
 
 /target
-
-/alloy
-/bdk_wallet
-/solana-sdk
-/wagyu
-/scripts

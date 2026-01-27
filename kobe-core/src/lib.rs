@@ -3,21 +3,30 @@
 //! This crate provides the unified [`Wallet`] type that holds a BIP39 mnemonic
 //! and derives seeds for multiple cryptocurrencies.
 //!
+//! # Features
+//!
+//! - `std` (default): Enable standard library support
+//! - `alloc`: Enable heap allocation without full std (for `no_std` environments)
+//!
 //! # Example
 //!
 //! ```
 //! use kobe_core::Wallet;
 //!
-//! // Generate a new wallet
-//! let wallet = Wallet::generate(12, None)?;
+//! // Generate a new wallet (requires std or alloc feature with RNG)
+//! let wallet = Wallet::generate(12, None).unwrap();
 //!
 //! // Or with a passphrase (BIP39 optional password)
-//! let wallet = Wallet::generate(12, Some("my secret passphrase"))?;
+//! let wallet = Wallet::generate(12, Some("my secret passphrase")).unwrap();
 //!
 //! // The same mnemonic can derive addresses for any coin
 //! let seed = wallet.seed();
-//! # Ok::<(), kobe_core::Error>(())
 //! ```
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 mod error;
 mod wallet;

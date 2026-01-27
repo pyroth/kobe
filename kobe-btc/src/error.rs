@@ -1,6 +1,9 @@
 //! Error types for Bitcoin wallet operations.
 
-use std::fmt;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+
+use core::fmt;
 
 /// Errors that can occur during Bitcoin wallet operations.
 #[derive(Debug)]
@@ -31,6 +34,7 @@ impl fmt::Display for Error {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {

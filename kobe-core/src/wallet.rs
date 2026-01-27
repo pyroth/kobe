@@ -1,5 +1,8 @@
 //! Unified wallet type for multi-chain key derivation.
 
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
+
 use bip39::Mnemonic;
 use zeroize::Zeroizing;
 
@@ -37,12 +40,35 @@ impl Wallet {
     /// # Errors
     ///
     /// Returns an error if the word count is invalid.
+    ///
+    /// # Note
+    ///
+    /// This function requires the `rand` feature to be enabled.
+    #[cfg(feature = "rand")]
     pub fn generate(word_count: usize, passphrase: Option<&str>) -> Result<Self, Error> {
         if !matches!(word_count, 12 | 15 | 18 | 21 | 24) {
             return Err(Error::InvalidWordCount(word_count));
         }
 
         let mnemonic = Mnemonic::generate(word_count)?;
+        Self::from_mnemonic(mnemonic.to_string().as_str(), passphrase)
+    }
+
+    /// Create a wallet from raw entropy bytes.
+    ///
+    /// This is useful in `no_std` environments where you provide your own entropy
+    /// source instead of relying on the system RNG.
+    ///
+    /// # Arguments
+    ///
+    /// * `entropy` - Raw entropy bytes (16, 20, 24, 28, or 32 bytes for 12-24 words)
+    /// * `passphrase` - Optional BIP39 passphrase for additional security
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the entropy length is invalid.
+    pub fn from_entropy(entropy: &[u8], passphrase: Option<&str>) -> Result<Self, Error> {
+        let mnemonic = Mnemonic::from_entropy(entropy)?;
         Self::from_mnemonic(mnemonic.to_string().as_str(), passphrase)
     }
 
@@ -105,6 +131,7 @@ mod tests {
 
     const TEST_MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_12_words() {
         let wallet = Wallet::generate(12, None).unwrap();
@@ -112,12 +139,14 @@ mod tests {
         assert!(!wallet.has_passphrase());
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_24_words() {
         let wallet = Wallet::generate(24, None).unwrap();
         assert_eq!(wallet.word_count(), 24);
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn test_generate_with_passphrase() {
         let wallet = Wallet::generate(12, Some("secret")).unwrap();
@@ -125,9 +154,18 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_word_count() {
-        let result = Wallet::generate(13, None);
+    fn test_invalid_entropy_length() {
+        // 15 bytes is invalid (should be 16, 20, 24, 28, or 32)
+        let result = Wallet::from_entropy(&[0u8; 15], None);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_entropy() {
+        // 16 bytes = 12 words
+        let entropy = [0u8; 16];
+        let wallet = Wallet::from_entropy(&entropy, None).unwrap();
+        assert_eq!(wallet.word_count(), 12);
     }
 
     #[test]

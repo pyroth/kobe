@@ -1,8 +1,11 @@
 //! Common types for Bitcoin wallet operations.
 
+#[cfg(feature = "alloc")]
+use alloc::{format, string::ToString};
+
 use crate::{Error, Network};
-use std::fmt;
-use std::str::FromStr;
+use core::fmt;
+use core::str::FromStr;
 
 /// Bitcoin address types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
