@@ -6,8 +6,94 @@ use crate::network::Network;
 use crate::privkey::PrivateKey;
 use alloc::vec::Vec;
 use kobe::hash::double_sha256;
-use kobe::transaction::{SigHashType, TxInput, TxOutput};
 use kobe::{Error, Result};
+
+/// Bitcoin-specific transaction input.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TxInput {
+    /// Previous transaction hash (txid).
+    pub prev_txid: [u8; 32],
+    /// Previous output index.
+    pub prev_vout: u32,
+    /// Script signature (empty for unsigned).
+    pub script_sig: Vec<u8>,
+    /// Sequence number.
+    pub sequence: u32,
+    /// Witness data (for SegWit).
+    pub witness: Vec<Vec<u8>>,
+    /// Amount of the previous output (needed for SegWit signing).
+    pub amount: Option<u64>,
+}
+
+impl TxInput {
+    /// Create a new transaction input.
+    pub fn new(prev_txid: [u8; 32], prev_vout: u32, amount: Option<u64>) -> Self {
+        Self {
+            prev_txid,
+            prev_vout,
+            script_sig: Vec::new(),
+            sequence: 0xffff_ffff,
+            witness: Vec::new(),
+            amount,
+        }
+    }
+
+    /// Create with RBF (Replace-By-Fee) enabled.
+    pub fn with_rbf(mut self) -> Self {
+        self.sequence = 0xffff_fffd;
+        self
+    }
+}
+
+/// Bitcoin-specific transaction output.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TxOutput {
+    /// Output amount in satoshis.
+    pub amount: u64,
+    /// Script public key.
+    pub script_pubkey: Vec<u8>,
+}
+
+impl TxOutput {
+    /// Create a new transaction output.
+    pub fn new(amount: u64, script_pubkey: Vec<u8>) -> Self {
+        Self {
+            amount,
+            script_pubkey,
+        }
+    }
+}
+
+/// Bitcoin signature hash types.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum SigHashType {
+    /// Sign all inputs and outputs.
+    #[default]
+    All = 0x01,
+    /// Sign all inputs, no outputs.
+    None = 0x02,
+    /// Sign all inputs, one output per input.
+    Single = 0x03,
+    /// Sign only this input, all outputs (ANYONECANPAY).
+    AllAnyoneCanPay = 0x81,
+    /// Sign only this input, no outputs.
+    NoneAnyoneCanPay = 0x82,
+    /// Sign only this input, corresponding output.
+    SingleAnyoneCanPay = 0x83,
+}
+
+impl SigHashType {
+    /// Check if ANYONECANPAY flag is set.
+    pub const fn is_anyone_can_pay(&self) -> bool {
+        (*self as u8) & 0x80 != 0
+    }
+
+    /// Get the base type (without ANYONECANPAY).
+    pub const fn base_type(&self) -> u8 {
+        (*self as u8) & 0x1f
+    }
+}
 
 /// Bitcoin transaction ID (32-byte hash).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

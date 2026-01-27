@@ -52,17 +52,11 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-pub mod encoding;
 pub mod error;
 pub mod hash;
 pub mod traits;
-pub mod transaction;
 pub mod types;
 
 pub use error::{Error, Result};
 pub use traits::*;
-pub use transaction::{Eip1559TxParams, EthTxParams, SigHashType, TxInput, TxOutput};
 pub use types::*;
-
-// Re-export rand_core from k256 for consistent RNG trait versions
-pub use k256::elliptic_curve::rand_core;

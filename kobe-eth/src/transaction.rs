@@ -7,8 +7,109 @@ use crate::network::Network;
 use crate::privkey::PrivateKey;
 use alloc::vec::Vec;
 use kobe::hash::keccak256;
-use kobe::transaction::{Eip1559TxParams, EthTxParams};
 use kobe::{Error, Result};
+
+/// Ethereum transaction parameters (EIP-155 legacy transaction).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EthTxParams {
+    /// Transaction nonce.
+    pub nonce: u64,
+    /// Gas price in wei.
+    pub gas_price: u128,
+    /// Gas limit.
+    pub gas_limit: u64,
+    /// Recipient address (None for contract creation).
+    pub to: Option<[u8; 20]>,
+    /// Value in wei.
+    pub value: u128,
+    /// Transaction data.
+    pub data: Vec<u8>,
+    /// Chain ID (EIP-155).
+    pub chain_id: u64,
+}
+
+impl EthTxParams {
+    /// Create parameters for a simple ETH transfer.
+    pub fn transfer(to: [u8; 20], value: u128, nonce: u64, gas_price: u128, chain_id: u64) -> Self {
+        Self {
+            nonce,
+            gas_price,
+            gas_limit: 21000,
+            to: Some(to),
+            value,
+            data: Vec::new(),
+            chain_id,
+        }
+    }
+
+    /// Create parameters for a contract call.
+    pub fn contract_call(
+        to: [u8; 20],
+        data: Vec<u8>,
+        value: u128,
+        nonce: u64,
+        gas_price: u128,
+        gas_limit: u64,
+        chain_id: u64,
+    ) -> Self {
+        Self {
+            nonce,
+            gas_price,
+            gas_limit,
+            to: Some(to),
+            value,
+            data,
+            chain_id,
+        }
+    }
+}
+
+/// EIP-1559 transaction parameters.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Eip1559TxParams {
+    /// Chain ID.
+    pub chain_id: u64,
+    /// Transaction nonce.
+    pub nonce: u64,
+    /// Max priority fee per gas (tip).
+    pub max_priority_fee_per_gas: u128,
+    /// Max fee per gas.
+    pub max_fee_per_gas: u128,
+    /// Gas limit.
+    pub gas_limit: u64,
+    /// Recipient address (None for contract creation).
+    pub to: Option<[u8; 20]>,
+    /// Value in wei.
+    pub value: u128,
+    /// Transaction data.
+    pub data: Vec<u8>,
+    /// Access list (EIP-2930).
+    pub access_list: Vec<(Vec<u8>, Vec<[u8; 32]>)>,
+}
+
+impl Eip1559TxParams {
+    /// Create parameters for a simple ETH transfer.
+    pub fn transfer(
+        to: [u8; 20],
+        value: u128,
+        nonce: u64,
+        max_priority_fee_per_gas: u128,
+        max_fee_per_gas: u128,
+        chain_id: u64,
+    ) -> Self {
+        Self {
+            chain_id,
+            nonce,
+            max_priority_fee_per_gas,
+            max_fee_per_gas,
+            gas_limit: 21000,
+            to: Some(to),
+            value,
+            data: Vec::new(),
+            access_list: Vec::new(),
+        }
+    }
+}
 
 /// Ethereum transaction ID (32-byte hash).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

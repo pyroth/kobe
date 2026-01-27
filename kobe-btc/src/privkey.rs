@@ -5,8 +5,8 @@
 use k256::ecdsa::SigningKey;
 use zeroize::Zeroize;
 
+use k256::elliptic_curve::rand_core::{CryptoRng, RngCore};
 use kobe::hash::double_sha256;
-use kobe::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, PrivateKey as _, Result, Signature};
 
 use crate::address::{Address, AddressFormat};

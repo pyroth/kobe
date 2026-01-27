@@ -12,7 +12,7 @@
 
 use zeroize::Zeroize;
 
-use kobe::rand_core::{CryptoRng, RngCore};
+use k256::elliptic_curve::rand_core::{CryptoRng, RngCore};
 use kobe::{Error, Result};
 
 use crate::xpriv::ExtendedPrivateKey;

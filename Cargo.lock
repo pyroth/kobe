@@ -308,8 +308,6 @@ dependencies = [
 name = "kobe"
 version = "0.1.0"
 dependencies = [
- "bech32",
- "bs58",
  "hex",
  "hex-literal",
  "hmac",

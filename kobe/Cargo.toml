@@ -17,8 +17,6 @@ std = ["alloc", "k256/std", "sha3/std", "hmac/std", "pbkdf2/std", "rand/std", "h
 alloc = ["k256/alloc", "hex/alloc"]
 
 [dependencies]
-bech32.workspace = true
-bs58.workspace = true
 hex.workspace = true
 hmac.workspace = true
 k256.workspace = true
