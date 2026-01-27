@@ -80,6 +80,8 @@ enum CliAddressType {
     Segwit,
     /// Native SegWit P2WPKH (starts with bc1q)
     NativeSegwit,
+    /// Taproot P2TR (starts with bc1p)
+    Taproot,
 }
 
 impl From<CliAddressType> for AddressType {
@@ -88,6 +90,7 @@ impl From<CliAddressType> for AddressType {
             CliAddressType::Legacy => AddressType::P2pkh,
             CliAddressType::Segwit => AddressType::P2shP2wpkh,
             CliAddressType::NativeSegwit => AddressType::P2wpkh,
+            CliAddressType::Taproot => AddressType::P2tr,
         }
     }
 }
