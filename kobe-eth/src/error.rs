@@ -1,4 +1,7 @@
 //! Error types for Ethereum wallet operations.
+//!
+//! This module defines all errors that can occur during Ethereum
+//! wallet creation, key derivation, and address generation.
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;

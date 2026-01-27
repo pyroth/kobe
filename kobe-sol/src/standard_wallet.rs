@@ -1,4 +1,7 @@
-//! Standard single-key Solana wallet (no mnemonic).
+//! Standard (non-HD) Solana wallet implementation.
+//!
+//! A standard wallet uses a single randomly generated private key,
+//! without mnemonic or HD derivation.
 
 use alloc::string::String;
 use ed25519_dalek::{SigningKey, VerifyingKey};
@@ -6,9 +9,23 @@ use zeroize::Zeroizing;
 
 use crate::Error;
 
-/// A standard Solana wallet with a single keypair (no HD derivation).
+/// A standard Solana wallet with a single keypair.
+///
+/// This wallet type generates a random private key directly,
+/// without using a mnemonic or HD derivation.
+///
+/// # Example
+///
+/// ```ignore
+/// use kobe_sol::StandardWallet;
+///
+/// let wallet = StandardWallet::generate().unwrap();
+/// println!("Address: {}", wallet.address_string());
+/// println!("Private Key: {}", wallet.private_key_hex());
+/// ```
 #[derive(Debug)]
 pub struct StandardWallet {
+    /// Ed25519 signing key.
     signing_key: SigningKey,
 }
 
@@ -53,7 +70,7 @@ impl StandardWallet {
         Ok(Self::from_private_key(&key_bytes))
     }
 
-    /// Get the Solana address (Base58 encoded public key).
+    /// Get the Solana address as Base58 encoded string.
     #[inline]
     #[must_use]
     pub fn address_string(&self) -> String {
@@ -61,14 +78,14 @@ impl StandardWallet {
         bs58::encode(verifying_key.as_bytes()).into_string()
     }
 
-    /// Get the private key as hex string.
+    /// Get the private key in hex format (zeroized on drop).
     #[inline]
     #[must_use]
     pub fn private_key_hex(&self) -> Zeroizing<String> {
         Zeroizing::new(hex::encode(self.signing_key.as_bytes()))
     }
 
-    /// Get the public key as hex string.
+    /// Get the public key in hex format.
     #[inline]
     #[must_use]
     pub fn public_key_hex(&self) -> String {

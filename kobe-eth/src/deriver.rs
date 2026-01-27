@@ -19,22 +19,34 @@ use crate::utils::{public_key_to_address, to_checksum_address};
 ///
 /// This deriver takes a seed from [`kobe_core::Wallet`] and derives
 /// Ethereum addresses following BIP32/44 standards.
+///
+/// # Example
+///
+/// ```ignore
+/// use kobe_core::Wallet;
+/// use kobe_eth::Deriver;
+///
+/// let wallet = Wallet::generate(12, None).unwrap();
+/// let deriver = Deriver::new(&wallet);
+/// let addr = deriver.derive(0, false, 0).unwrap();
+/// println!("Address: {}", addr.address);
+/// ```
 #[derive(Debug)]
 pub struct Deriver<'a> {
-    /// Reference to the wallet.
+    /// Reference to the wallet for seed access.
     wallet: &'a Wallet,
 }
 
 /// A derived Ethereum address with associated keys.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DerivedAddress {
-    /// Derivation path used.
+    /// Derivation path used (e.g., `m/44'/60'/0'/0/0`).
     pub path: String,
-    /// Private key in hex format (without 0x prefix).
+    /// Private key in hex format without 0x prefix (zeroized on drop).
     pub private_key_hex: Zeroizing<String>,
-    /// Public key in hex format (uncompressed).
+    /// Public key in uncompressed hex format.
     pub public_key_hex: String,
-    /// Checksummed Ethereum address.
+    /// Checksummed Ethereum address (EIP-55)..
     pub address: String,
 }
 

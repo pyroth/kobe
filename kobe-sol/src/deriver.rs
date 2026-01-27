@@ -12,19 +12,19 @@ use kobe_core::Wallet;
 /// A derived Solana address with associated keys.
 #[derive(Debug, Clone)]
 pub struct DerivedAddress {
-    /// Derivation path used.
+    /// Derivation path used (e.g., `m/44'/501'/0'/0'`).
     pub path: String,
-    /// Private key as hex string (zeroized on drop).
+    /// Private key in hex format (zeroized on drop).
     pub private_key_hex: Zeroizing<String>,
-    /// Public key as hex string.
+    /// Public key in hex format.
     pub public_key_hex: String,
     /// Solana address (Base58 encoded public key).
     pub address: String,
 }
 
-/// Solana address deriver using SLIP-0010 Ed25519.
 #[derive(Debug)]
 pub struct Deriver<'a> {
+    /// Reference to the wallet for seed access.
     wallet: &'a Wallet,
 }
 

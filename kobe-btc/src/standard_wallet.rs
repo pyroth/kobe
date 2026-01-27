@@ -1,6 +1,7 @@
 //! Standard (non-HD) Bitcoin wallet implementation.
 //!
-//! A standard wallet uses a single randomly generated private key.
+//! A standard wallet uses a single randomly generated private key,
+//! without mnemonic or HD derivation.
 
 #[cfg(feature = "alloc")]
 use alloc::string::{String, ToString};
@@ -16,17 +17,27 @@ use crate::{AddressType, Error, Network};
 ///
 /// This wallet type generates a random private key directly,
 /// without using a mnemonic or HD derivation.
+///
+/// # Example
+///
+/// ```ignore
+/// use kobe_btc::{StandardWallet, Network, AddressType};
+///
+/// let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2wpkh).unwrap();
+/// println!("Address: {}", wallet.address_string());
+/// println!("Private Key (WIF): {}", wallet.private_key_wif());
+/// ```
 #[derive(Debug)]
 pub struct StandardWallet {
-    /// Private key.
+    /// Bitcoin private key.
     private_key: PrivateKey,
-    /// Compressed public key.
+    /// Compressed public key derived from private key.
     public_key: CompressedPublicKey,
     /// Bitcoin address.
     address: Address,
-    /// Network.
+    /// Bitcoin network (mainnet or testnet).
     network: Network,
-    /// Address type.
+    /// Address type used for this wallet.
     address_type: AddressType,
 }
 
@@ -119,13 +130,15 @@ impl StandardWallet {
         }
     }
 
-    /// Get the private key in WIF format.
+    /// Get the private key in WIF format (zeroized on drop).
+    #[inline]
     #[must_use]
     pub fn private_key_wif(&self) -> Zeroizing<String> {
         Zeroizing::new(self.private_key.to_wif())
     }
 
-    /// Get the public key in hex format.
+    /// Get the public key in compressed hex format.
+    #[inline]
     #[must_use]
     pub fn public_key_hex(&self) -> String {
         self.public_key.to_string()

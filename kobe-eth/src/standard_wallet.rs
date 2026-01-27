@@ -1,6 +1,7 @@
 //! Standard (non-HD) Ethereum wallet implementation.
 //!
-//! A standard wallet uses a single randomly generated private key.
+//! A standard wallet uses a single randomly generated private key,
+//! without mnemonic or HD derivation.
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
@@ -16,11 +17,21 @@ use crate::utils::{public_key_to_address, to_checksum_address};
 ///
 /// This wallet type generates a random private key directly,
 /// without using a mnemonic or HD derivation.
+///
+/// # Example
+///
+/// ```ignore
+/// use kobe_eth::StandardWallet;
+///
+/// let wallet = StandardWallet::generate().unwrap();
+/// println!("Address: {}", wallet.address_string());
+/// println!("Private Key: 0x{}", wallet.private_key_hex());
+/// ```
 #[derive(Debug)]
 pub struct StandardWallet {
-    /// Private key.
+    /// ECDSA signing key (secp256k1).
     private_key: SigningKey,
-    /// Ethereum address.
+    /// Ethereum address derived from public key.
     address: Address,
 }
 
@@ -71,13 +82,15 @@ impl StandardWallet {
         public_key_to_address(public_key_bytes.as_bytes())
     }
 
-    /// Get the private key in hex format (without 0x prefix).
+    /// Get the private key in hex format without 0x prefix (zeroized on drop).
+    #[inline]
     #[must_use]
     pub fn private_key_hex(&self) -> Zeroizing<String> {
         Zeroizing::new(hex::encode(self.private_key.to_bytes()))
     }
 
-    /// Get the public key in hex format (uncompressed, without 0x prefix).
+    /// Get the public key in uncompressed hex format without 0x prefix.
+    #[inline]
     #[must_use]
     pub fn public_key_hex(&self) -> String {
         let public_key = self.private_key.verifying_key();

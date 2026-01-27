@@ -1,4 +1,7 @@
 //! Error types for Bitcoin wallet operations.
+//!
+//! This module defines all errors that can occur during Bitcoin
+//! wallet creation, key derivation, and address generation.
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;

@@ -19,28 +19,40 @@ use crate::{AddressType, DerivationPath, Error, Network};
 ///
 /// This deriver takes a seed from [`kobe_core::Wallet`] and derives
 /// Bitcoin addresses following BIP32/44/49/84 standards.
+///
+/// # Example
+///
+/// ```ignore
+/// use kobe_core::Wallet;
+/// use kobe_btc::{Deriver, Network, AddressType};
+///
+/// let wallet = Wallet::generate(12, None).unwrap();
+/// let deriver = Deriver::new(&wallet, Network::Mainnet).unwrap();
+/// let addr = deriver.derive(AddressType::P2wpkh, 0, false, 0).unwrap();
+/// println!("Address: {}", addr.address);
+/// ```
 #[derive(Debug)]
 pub struct Deriver<'a> {
     /// Master extended private key.
     master_key: Xpriv,
-    /// Network.
+    /// Bitcoin network (mainnet or testnet).
     network: Network,
-    /// Reference to the wallet (for lifetime tracking).
+    /// Phantom data to track wallet lifetime.
     _wallet: PhantomData<&'a Wallet>,
 }
 
 /// A derived Bitcoin address with associated keys.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DerivedAddress {
-    /// Derivation path used.
+    /// Derivation path used (e.g., `m/84'/0'/0'/0/0`).
     pub path: DerivationPath,
-    /// Private key in WIF format.
+    /// Private key in WIF format (zeroized on drop).
     pub private_key_wif: Zeroizing<String>,
-    /// Public key in hex format.
+    /// Public key in compressed hex format.
     pub public_key_hex: String,
-    /// Bitcoin address.
+    /// Bitcoin address string.
     pub address: String,
-    /// Address type.
+    /// Address type used for derivation.
     pub address_type: AddressType,
 }
 

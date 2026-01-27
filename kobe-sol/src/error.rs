@@ -1,4 +1,7 @@
 //! Error types for Solana wallet operations.
+//!
+//! This module defines all errors that can occur during Solana
+//! wallet creation, key derivation, and address generation.
 
 use core::fmt;
 
