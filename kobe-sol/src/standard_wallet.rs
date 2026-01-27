@@ -37,8 +37,12 @@ impl StandardWallet {
     /// Returns an error if random generation fails.
     #[cfg(feature = "rand")]
     pub fn generate() -> Result<Self, Error> {
-        use rand_core::OsRng;
-        let signing_key = SigningKey::generate(&mut OsRng);
+        let mut bytes = [0u8; 32];
+        getrandom::fill(&mut bytes)
+            .map_err(|e| Error::Derivation(alloc::format!("random generation failed: {e}")))?;
+        let signing_key = SigningKey::from_bytes(&bytes);
+        // Zeroize the temporary buffer
+        bytes.iter_mut().for_each(|b| *b = 0);
         Ok(Self { signing_key })
     }
 
