@@ -90,72 +90,42 @@ impl EthereumCommand {
     }
 }
 
+#[rustfmt::skip]
 fn print_wallet(
     wallet: &Wallet,
     deriver: &Deriver,
     count: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!();
-    println!("{}", "━".repeat(70).dimmed());
-    println!("{}", " Ethereum Wallet ".bold().on_magenta());
-    println!("{}", "━".repeat(70).dimmed());
-    println!();
-    if wallet.has_passphrase() {
-        println!("  {}", "(with passphrase)".dimmed());
-    }
-    println!("{}", "Mnemonic:".bold());
-    println!("  {}", wallet.mnemonic().yellow());
-    println!();
-
     let addresses = deriver.derive_many(0, false, 0, count)?;
 
-    for (i, addr) in addresses.iter().enumerate() {
-        println!("{} #{}", "Address".bold(), i);
-        println!("  {}: {}", "Path".dimmed(), addr.path);
-        println!("  {}: {}", "Address".dimmed(), addr.address.green());
-        println!(
-            "  {}: 0x{}",
-            "Private Key".dimmed(),
-            addr.private_key_hex.as_str().red()
-        );
-        println!();
+    println!();
+    println!("      {}     {}", "Mnemonic".cyan().bold(), wallet.mnemonic());
+    if wallet.has_passphrase() {
+        println!("      {}   {}", "Passphrase".cyan().bold(), "(set)".dimmed());
     }
+    println!();
 
-    println!("{}", "━".repeat(70).dimmed());
-    println!(
-        "{}",
-        "⚠ Store your mnemonic safely! Never share your private key!"
-            .yellow()
-            .bold()
-    );
-    println!("{}", "━".repeat(70).dimmed());
+    for (i, addr) in addresses.iter().enumerate() {
+        if count > 1 {
+            println!("      {}        {}", "Index".cyan().bold(), format!("[{}]", i).dimmed());
+        }
+        println!("      {}         {}", "Path".cyan().bold(), addr.path);
+        println!("      {}      {}", "Address".cyan().bold(), addr.address.green());
+        println!("      {}  0x{}", "Private Key".cyan().bold(), addr.private_key_hex.as_str());
+        if i < addresses.len() - 1 {
+            println!();
+        }
+    }
     println!();
 
     Ok(())
 }
 
+#[rustfmt::skip]
 fn print_standard_wallet(wallet: &StandardWallet) {
     println!();
-    println!("{}", "━".repeat(70).dimmed());
-    println!("{}", " Ethereum Random Wallet ".bold().on_magenta());
-    println!("{}", "━".repeat(70).dimmed());
-    println!();
-    println!("{}", "Private Key:".bold());
-    println!("  0x{}", wallet.private_key_hex().as_str().red());
-    println!();
-    println!("{}", "Public Key:".bold());
-    println!("  0x{}", wallet.public_key_hex().dimmed());
-    println!();
-    println!("{}", "Address:".bold());
-    println!("  {}", wallet.address_string().green());
-    println!();
-    println!("{}", "━".repeat(70).dimmed());
-    println!(
-        "{}",
-        "⚠ Back up your private key! There is no mnemonic for this wallet!"
-            .yellow()
-            .bold()
-    );
-    println!("{}", "━".repeat(70).dimmed());
+    println!("      {}      {}", "Address".cyan().bold(), wallet.address_string().green());
+    println!("      {}  0x{}", "Private Key".cyan().bold(), wallet.private_key_hex().as_str());
+    println!("      {}   0x{}", "Public Key".cyan().bold(), wallet.public_key_hex().dimmed());
     println!();
 }

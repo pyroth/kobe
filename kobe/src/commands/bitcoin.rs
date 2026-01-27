@@ -148,6 +148,7 @@ impl BitcoinCommand {
     }
 }
 
+#[rustfmt::skip]
 fn print_wallet(
     wallet: &Wallet,
     deriver: &Deriver,
@@ -155,92 +156,48 @@ fn print_wallet(
     count: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let network_str = match deriver.network() {
-        Network::Mainnet => "Mainnet".green(),
-        Network::Testnet => "Testnet".yellow(),
+        Network::Mainnet => "mainnet",
+        Network::Testnet => "testnet",
     };
-
-    println!();
-    println!("{}", "━".repeat(70).dimmed());
-    println!("{}", " Bitcoin Wallet ".bold().on_blue());
-    println!("{}", "━".repeat(70).dimmed());
-    println!();
-    println!(
-        "{}: {}  |  {}: {}",
-        "Network".bold(),
-        network_str,
-        "Address Type".bold(),
-        address_type.name().cyan()
-    );
-    if wallet.has_passphrase() {
-        println!("  {}", "(with passphrase)".dimmed());
-    }
-    println!();
-    println!("{}", "Mnemonic:".bold());
-    println!("  {}", wallet.mnemonic().yellow());
-    println!();
-
     let addresses = deriver.derive_many(address_type, 0, false, 0, count)?;
 
-    for (i, addr) in addresses.iter().enumerate() {
-        println!("{} #{}", "Address".bold(), i);
-        println!("  {}: {}", "Path".dimmed(), addr.path);
-        println!("  {}: {}", "Address".dimmed(), addr.address.green());
-        println!(
-            "  {}: {}",
-            "Private Key (WIF)".dimmed(),
-            addr.private_key_wif.as_str().red()
-        );
-        println!();
+    println!();
+    println!("      {}      {}", "Network".cyan().bold(), network_str);
+    println!("      {} {}", "Address Type".cyan().bold(), address_type.name());
+    println!("      {}     {}", "Mnemonic".cyan().bold(), wallet.mnemonic());
+    if wallet.has_passphrase() {
+        println!("      {}   {}", "Passphrase".cyan().bold(), "(set)".dimmed());
     }
+    println!();
 
-    println!("{}", "━".repeat(70).dimmed());
-    println!(
-        "{}",
-        "⚠ Store your mnemonic safely! Never share your private key!"
-            .yellow()
-            .bold()
-    );
-    println!("{}", "━".repeat(70).dimmed());
+    for (i, addr) in addresses.iter().enumerate() {
+        if count > 1 {
+            println!("      {}        {}", "Index".cyan().bold(), format!("[{}]", i).dimmed());
+        }
+        println!("      {}         {}", "Path".cyan().bold(), addr.path);
+        println!("      {}      {}", "Address".cyan().bold(), addr.address.green());
+        println!("      {}  {}", "Private Key".cyan().bold(), addr.private_key_wif.as_str());
+        if i < addresses.len() - 1 {
+            println!();
+        }
+    }
     println!();
 
     Ok(())
 }
 
+#[rustfmt::skip]
 fn print_standard_wallet(wallet: &StandardWallet) {
     let network_str = match wallet.network() {
-        Network::Mainnet => "Mainnet".green(),
-        Network::Testnet => "Testnet".yellow(),
+        Network::Mainnet => "mainnet",
+        Network::Testnet => "testnet",
     };
 
     println!();
-    println!("{}", "━".repeat(70).dimmed());
-    println!("{}", " Bitcoin Standard Wallet ".bold().on_blue());
-    println!("{}", "━".repeat(70).dimmed());
-    println!();
-    println!(
-        "{}: {}  |  {}: {}",
-        "Network".bold(),
-        network_str,
-        "Address Type".bold(),
-        wallet.address_type().name().cyan()
-    );
-    println!();
-    println!("{}", "Private Key (WIF):".bold());
-    println!("  {}", wallet.private_key_wif().as_str().red());
-    println!();
-    println!("{}", "Public Key:".bold());
-    println!("  {}", wallet.public_key_hex().dimmed());
-    println!();
-    println!("{}", "Address:".bold());
-    println!("  {}", wallet.address_string().green());
-    println!();
-    println!("{}", "━".repeat(70).dimmed());
-    println!(
-        "{}",
-        "⚠ Back up your private key! There is no mnemonic for this wallet!"
-            .yellow()
-            .bold()
-    );
-    println!("{}", "━".repeat(70).dimmed());
+    println!("      {}      {}", "Network".cyan().bold(), network_str);
+    println!("      {} {}", "Address Type".cyan().bold(), wallet.address_type().name());
+    println!("      {}      {}", "Address".cyan().bold(), wallet.address_string().green());
+    println!("      {}  {}", "Private Key".cyan().bold(), wallet.private_key_wif().as_str());
+    println!("      {}   {}", "Public Key".cyan().bold(), wallet.public_key_hex().dimmed());
     println!();
 }
