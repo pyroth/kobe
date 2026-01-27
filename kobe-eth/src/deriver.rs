@@ -58,13 +58,14 @@ impl<'a> Deriver<'a> {
     /// # Errors
     ///
     /// Returns an error if derivation fails.
+    #[inline]
     pub fn derive(
         &self,
         account: u32,
         change: bool,
         address_index: u32,
     ) -> Result<DerivedAddress, Error> {
-        let change_val = if change { 1 } else { 0 };
+        let change_val = i32::from(change);
         let path = format!("m/44'/60'/{account}'/{change_val}/{address_index}");
         self.derive_at_path(&path)
     }

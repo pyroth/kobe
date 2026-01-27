@@ -50,6 +50,7 @@ impl<'a> Deriver<'a> {
     /// # Errors
     ///
     /// Returns an error if the master key derivation fails.
+    #[inline]
     pub fn new(wallet: &'a Wallet, network: Network) -> Result<Self, Error> {
         let master_key = Xpriv::new_master(network.to_bitcoin_network(), wallet.seed())?;
 
@@ -94,6 +95,11 @@ impl<'a> Deriver<'a> {
     /// # Errors
     ///
     /// Returns an error if derivation fails.
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic under normal circumstances.
+    /// The internal `expect` is guaranteed to succeed for valid private keys.
     pub fn derive_at_path(
         &self,
         path: &DerivationPath,

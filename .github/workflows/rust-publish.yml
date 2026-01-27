@@ -12,6 +12,6 @@ jobs:
   call-publish:
     uses: qntx/workflows/.github/workflows/rust-publish.yml@main
     with:
-      package: "kobe-core kobe-btc kobe-eth kobe"
+      package: "kobe-core kobe-btc kobe-eth kobe-sol kobe"
     secrets:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

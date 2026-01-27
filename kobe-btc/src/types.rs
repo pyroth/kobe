@@ -14,9 +14,9 @@ use core::str::FromStr;
 pub enum AddressType {
     /// Pay to Public Key Hash (Legacy) - starts with 1 or m/n
     P2pkh,
-    /// Pay to Script Hash wrapping P2WPKH (SegWit compatible) - starts with 3 or 2
+    /// Pay to Script Hash wrapping P2WPKH (`SegWit` compatible) - starts with 3 or 2
     P2shP2wpkh,
-    /// Pay to Witness Public Key Hash (Native SegWit) - starts with bc1q or tb1q
+    /// Pay to Witness Public Key Hash (Native `SegWit`) - starts with bc1q or tb1q
     #[default]
     P2wpkh,
     /// Pay to Taproot (Taproot/SegWit v1) - starts with bc1p or tb1p
@@ -67,6 +67,10 @@ impl DerivationPath {
     /// Create a BIP44/49/84 standard path.
     ///
     /// Format: `m/purpose'/coin_type'/account'/change/address_index`
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic as the path format is always valid.
     #[must_use]
     pub fn bip_standard(
         address_type: AddressType,
@@ -77,7 +81,7 @@ impl DerivationPath {
     ) -> Self {
         let purpose = address_type.purpose();
         let coin_type = network.coin_type();
-        let change_val = if change { 1 } else { 0 };
+        let change_val = i32::from(change);
 
         let path_str = format!("m/{purpose}'/{coin_type}'/{account}'/{change_val}/{address_index}");
 
@@ -100,7 +104,7 @@ impl DerivationPath {
     /// Get the inner bitcoin derivation path.
     #[inline]
     #[must_use]
-    pub fn inner(&self) -> &bitcoin::bip32::DerivationPath {
+    pub const fn inner(&self) -> &bitcoin::bip32::DerivationPath {
         &self.inner
     }
 }

@@ -76,9 +76,9 @@ enum BitcoinSubcommand {
 enum CliAddressType {
     /// Legacy P2PKH (starts with 1)
     Legacy,
-    /// SegWit P2SH-P2WPKH (starts with 3)
+    /// `SegWit` P2SH-P2WPKH (starts with 3)
     Segwit,
-    /// Native SegWit P2WPKH (starts with bc1q)
+    /// Native `SegWit` P2WPKH (starts with bc1q)
     NativeSegwit,
     /// Taproot P2TR (starts with bc1p)
     Taproot,
@@ -87,10 +87,10 @@ enum CliAddressType {
 impl From<CliAddressType> for AddressType {
     fn from(val: CliAddressType) -> Self {
         match val {
-            CliAddressType::Legacy => AddressType::P2pkh,
-            CliAddressType::Segwit => AddressType::P2shP2wpkh,
-            CliAddressType::NativeSegwit => AddressType::P2wpkh,
-            CliAddressType::Taproot => AddressType::P2tr,
+            CliAddressType::Legacy => Self::P2pkh,
+            CliAddressType::Segwit => Self::P2shP2wpkh,
+            CliAddressType::NativeSegwit => Self::P2wpkh,
+            CliAddressType::Taproot => Self::P2tr,
         }
     }
 }
@@ -175,7 +175,7 @@ fn print_wallet(
 
     for (i, addr) in addresses.iter().enumerate() {
         if count > 1 {
-            println!("      {}        {}", "Index".cyan().bold(), format!("[{}]", i).dimmed());
+            println!("      {}        {}", "Index".cyan().bold(), format!("[{i}]").dimmed());
         }
         println!("      {}         {}", "Path".cyan().bold(), addr.path);
         println!("      {}      {}", "Address".cyan().bold(), addr.address.green());

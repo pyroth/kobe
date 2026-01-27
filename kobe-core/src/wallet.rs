@@ -98,6 +98,7 @@ impl Wallet {
     ///
     /// **Security Warning**: Handle this value carefully as it can
     /// reconstruct all derived keys.
+    #[inline]
     #[must_use]
     pub fn mnemonic(&self) -> &str {
         &self.mnemonic
@@ -107,6 +108,7 @@ impl Wallet {
     ///
     /// This seed can be used by chain-specific derivers (Bitcoin, Ethereum, etc.)
     /// to generate addresses following their respective standards.
+    #[inline]
     #[must_use]
     pub fn seed(&self) -> &[u8; 64] {
         &self.seed
@@ -119,6 +121,7 @@ impl Wallet {
     }
 
     /// Get the word count of the mnemonic.
+    #[inline]
     #[must_use]
     pub fn word_count(&self) -> usize {
         self.mnemonic.split_whitespace().count()

@@ -4,6 +4,7 @@ use core::fmt;
 
 /// Errors that can occur during wallet operations.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// Invalid mnemonic phrase.
     Mnemonic(bip39::Error),

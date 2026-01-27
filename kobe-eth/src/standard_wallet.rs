@@ -92,6 +92,7 @@ impl StandardWallet {
     }
 
     /// Get the checksummed address string.
+    #[inline]
     #[must_use]
     pub fn address_string(&self) -> String {
         to_checksum_address(&self.address)

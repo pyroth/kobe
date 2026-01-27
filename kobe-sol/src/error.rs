@@ -4,6 +4,7 @@ use core::fmt;
 
 /// Errors that can occur during Solana wallet operations.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// Key derivation failed.
     Derivation(#[cfg(feature = "alloc")] alloc::string::String),

@@ -37,6 +37,11 @@ impl StandardWallet {
     ///
     /// Returns an error if key generation fails.
     ///
+    /// # Panics
+    ///
+    /// This function will not panic under normal circumstances.
+    /// The internal `expect` is guaranteed to succeed for valid private keys.
+    ///
     /// # Note
     ///
     /// This function requires the `rand` feature to be enabled.
@@ -65,6 +70,11 @@ impl StandardWallet {
     /// # Errors
     ///
     /// Returns an error if the WIF is invalid.
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic under normal circumstances.
+    /// The internal `expect` is guaranteed to succeed for valid private keys.
     pub fn from_wif(wif: &str, address_type: AddressType) -> Result<Self, Error> {
         let private_key: PrivateKey = wif.parse().map_err(|_| Error::InvalidWif)?;
 
@@ -123,11 +133,12 @@ impl StandardWallet {
 
     /// Get the Bitcoin address.
     #[must_use]
-    pub fn address(&self) -> &Address {
+    pub const fn address(&self) -> &Address {
         &self.address
     }
 
     /// Get the address as a string.
+    #[inline]
     #[must_use]
     pub fn address_string(&self) -> String {
         self.address.to_string()

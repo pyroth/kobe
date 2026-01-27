@@ -7,6 +7,7 @@ use core::fmt;
 
 /// Errors that can occur during Ethereum wallet operations.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// Invalid private key.
     InvalidPrivateKey,

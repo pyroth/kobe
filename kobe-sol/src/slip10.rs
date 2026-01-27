@@ -1,7 +1,7 @@
 //! SLIP-0010 Ed25519 key derivation.
 //!
 //! Implements SLIP-0010 for deriving Ed25519 keys from a seed.
-//! Reference: https://github.com/satoshilabs/slips/blob/master/slip-0010.md
+//! Reference: <https://github.com/satoshilabs/slips/blob/master/slip-0010.md>
 
 use alloc::string::String;
 use ed25519_dalek::SigningKey;

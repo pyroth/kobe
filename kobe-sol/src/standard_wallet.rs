@@ -54,6 +54,7 @@ impl StandardWallet {
     }
 
     /// Get the Solana address (Base58 encoded public key).
+    #[inline]
     #[must_use]
     pub fn address_string(&self) -> String {
         let verifying_key: VerifyingKey = self.signing_key.verifying_key();
@@ -61,12 +62,14 @@ impl StandardWallet {
     }
 
     /// Get the private key as hex string.
+    #[inline]
     #[must_use]
     pub fn private_key_hex(&self) -> Zeroizing<String> {
         Zeroizing::new(hex::encode(self.signing_key.as_bytes()))
     }
 
     /// Get the public key as hex string.
+    #[inline]
     #[must_use]
     pub fn public_key_hex(&self) -> String {
         let verifying_key: VerifyingKey = self.signing_key.verifying_key();

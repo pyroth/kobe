@@ -107,7 +107,7 @@ fn print_wallet(
 
     for (i, addr) in addresses.iter().enumerate() {
         if count > 1 {
-            println!("      {}        {}", "Index".cyan().bold(), format!("[{}]", i).dimmed());
+            println!("      {}        {}", "Index".cyan().bold(), format!("[{i}]").dimmed());
         }
         println!("      {}         {}", "Path".cyan().bold(), addr.path);
         println!("      {}      {}", "Address".cyan().bold(), addr.address.green());

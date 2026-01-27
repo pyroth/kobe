@@ -23,6 +23,7 @@ pub struct DerivedAddress {
 }
 
 /// Solana address deriver using SLIP-0010 Ed25519.
+#[derive(Debug)]
 pub struct Deriver<'a> {
     wallet: &'a Wallet,
 }
@@ -42,6 +43,7 @@ impl<'a> Deriver<'a> {
     /// # Errors
     ///
     /// Returns an error if derivation fails.
+    #[inline]
     pub fn derive(&self, account: u32) -> Result<DerivedAddress, Error> {
         self.derive_with_change(account, 0)
     }
