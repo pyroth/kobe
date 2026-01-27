@@ -266,74 +266,78 @@ fn encode_varint(n: usize) -> alloc::vec::Vec<u8> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_wif_export() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = PrivateKey::from_bytes(&bytes).unwrap();
-        let wif = key.to_wif(Network::Mainnet);
-        assert_eq!(wif, "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617");
+    /// Test key bytes used across all tests
+    const TEST_KEY_BYTES: [u8; 32] =
+        hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
+
+    mod wif_tests {
+        use super::*;
+
+        #[test]
+        fn export_mainnet_compressed() {
+            let key = PrivateKey::from_bytes(&TEST_KEY_BYTES).unwrap();
+            let wif = key.to_wif(Network::Mainnet);
+            assert_eq!(wif, "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617");
+        }
+
+        #[test]
+        fn import_mainnet_compressed() {
+            let wif = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617";
+            let (key, network) = PrivateKey::from_wif(wif).unwrap();
+            assert_eq!(network, Network::Mainnet);
+            assert!(key.is_compressed());
+            assert_eq!(key.to_bytes(), TEST_KEY_BYTES);
+        }
+
+        #[test]
+        fn import_mainnet_uncompressed() {
+            let wif = "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ";
+            let (key, network) = PrivateKey::from_wif(wif).unwrap();
+            assert_eq!(network, Network::Mainnet);
+            assert!(!key.is_compressed());
+        }
+
+        #[test]
+        fn roundtrip_mainnet() {
+            let bytes = hex_literal::hex!(
+                "e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35"
+            );
+            let key = PrivateKey::from_bytes(&bytes).unwrap();
+            let wif = key.to_wif(Network::Mainnet);
+            let (recovered, network) = PrivateKey::from_wif(&wif).unwrap();
+            assert_eq!(network, Network::Mainnet);
+            assert_eq!(key.to_bytes(), recovered.to_bytes());
+        }
+
+        #[test]
+        fn roundtrip_testnet() {
+            let key = PrivateKey::from_bytes(&TEST_KEY_BYTES).unwrap();
+            let wif = key.to_wif(Network::Testnet);
+            assert!(wif.starts_with('c'));
+            let (recovered, network) = PrivateKey::from_wif(&wif).unwrap();
+            assert_eq!(network, Network::Testnet);
+            assert_eq!(key.to_bytes(), recovered.to_bytes());
+        }
     }
 
-    #[test]
-    fn test_wif_import_compressed() {
-        let wif = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617";
-        let (key, network) = PrivateKey::from_wif(wif).unwrap();
-        assert_eq!(network, Network::Mainnet);
-        assert!(key.is_compressed());
-        assert_eq!(
-            key.to_bytes(),
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d")
-        );
-    }
+    mod from_str_tests {
+        use super::*;
 
-    #[test]
-    fn test_wif_import_uncompressed() {
-        let wif = "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ";
-        let (key, network) = PrivateKey::from_wif(wif).unwrap();
-        assert_eq!(network, Network::Mainnet);
-        assert!(!key.is_compressed());
-    }
+        #[test]
+        fn parse_wif_format() {
+            let key: PrivateKey = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
+                .parse()
+                .unwrap();
+            assert!(key.is_compressed());
+        }
 
-    #[test]
-    fn test_wif_roundtrip() {
-        let bytes =
-            hex_literal::hex!("e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35");
-        let key = PrivateKey::from_bytes(&bytes).unwrap();
-        let wif = key.to_wif(Network::Mainnet);
-        let (recovered, network) = PrivateKey::from_wif(&wif).unwrap();
-        assert_eq!(network, Network::Mainnet);
-        assert_eq!(key.to_bytes(), recovered.to_bytes());
-    }
-
-    #[test]
-    fn test_from_str_wif() {
-        let key: PrivateKey = "KwdMAjGmerYanjeui5SHS7JkmpZvVipYvB2LJGU1ZxJwYvP98617"
-            .parse()
-            .unwrap();
-        assert!(key.is_compressed());
-    }
-
-    #[test]
-    fn test_from_str_hex() {
-        let key: PrivateKey = "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"
-            .parse()
-            .unwrap();
-        assert_eq!(
-            key.to_bytes(),
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d")
-        );
-    }
-
-    #[test]
-    fn test_testnet_wif() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = PrivateKey::from_bytes(&bytes).unwrap();
-        let wif = key.to_wif(Network::Testnet);
-        assert!(wif.starts_with('c'));
-        let (recovered, network) = PrivateKey::from_wif(&wif).unwrap();
-        assert_eq!(network, Network::Testnet);
-        assert_eq!(key.to_bytes(), recovered.to_bytes());
+        #[test]
+        fn parse_hex_format() {
+            let key: PrivateKey =
+                "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d"
+                    .parse()
+                    .unwrap();
+            assert_eq!(key.to_bytes(), TEST_KEY_BYTES);
+        }
     }
 }

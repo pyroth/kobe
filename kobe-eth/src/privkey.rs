@@ -178,59 +178,63 @@ fn eip712_hash(domain_separator: &[u8; 32], struct_hash: &[u8; 32]) -> [u8; 32] 
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_from_bytes() {
-        let bytes =
-            hex_literal::hex!("4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318");
-        let key = PrivateKey::from_bytes(&bytes).unwrap();
-        assert_eq!(key.to_bytes(), bytes);
+    /// Test key bytes used across all tests
+    const TEST_KEY_HEX: &str = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318";
+    const TEST_KEY_BYTES: [u8; 32] =
+        hex_literal::hex!("4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318");
+
+    fn test_key() -> PrivateKey {
+        TEST_KEY_HEX.parse().unwrap()
     }
 
-    #[test]
-    fn test_from_str() {
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
-        let expected =
-            hex_literal::hex!("4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318");
-        assert_eq!(key.to_bytes(), expected);
+    mod creation_tests {
+        use super::*;
+
+        #[test]
+        fn from_bytes() {
+            let key = PrivateKey::from_bytes(&TEST_KEY_BYTES).unwrap();
+            assert_eq!(key.to_bytes(), TEST_KEY_BYTES);
+        }
+
+        #[test]
+        fn from_hex_str() {
+            let key: PrivateKey = TEST_KEY_HEX.parse().unwrap();
+            assert_eq!(key.to_bytes(), TEST_KEY_BYTES);
+        }
     }
 
-    #[test]
-    fn test_address_derivation() {
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
-        let addr = key.address();
-        assert_eq!(
-            addr.to_string().to_lowercase(),
-            "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"
-        );
+    mod serialization_tests {
+        use super::*;
+
+        #[test]
+        fn to_hex() {
+            assert_eq!(test_key().to_hex(), TEST_KEY_HEX);
+        }
     }
 
-    #[test]
-    fn test_to_hex() {
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
-        assert_eq!(
-            key.to_hex(),
-            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-        );
+    mod address_tests {
+        use super::*;
+
+        #[test]
+        fn derive_address() {
+            let addr = test_key().address();
+            assert_eq!(
+                addr.to_string().to_lowercase(),
+                "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"
+            );
+        }
     }
 
-    #[test]
-    fn test_eip712_sign() {
-        let key: PrivateKey = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-            .parse()
-            .unwrap();
+    mod signing_tests {
+        use super::*;
 
-        // Example domain separator and struct hash
-        let domain = [1u8; 32];
-        let struct_hash = [2u8; 32];
-
-        let sig = key.sign_typed_data(&domain, &struct_hash).unwrap();
-        assert_eq!(sig.r.len(), 32);
-        assert_eq!(sig.s.len(), 32);
+        #[test]
+        fn eip712_typed_data() {
+            let domain = [1u8; 32];
+            let struct_hash = [2u8; 32];
+            let sig = test_key().sign_typed_data(&domain, &struct_hash).unwrap();
+            assert_eq!(sig.r.len(), 32);
+            assert_eq!(sig.s.len(), 32);
+        }
     }
 }

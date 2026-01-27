@@ -565,172 +565,177 @@ mod tests {
     use super::*;
     use kobe::PrivateKey as PrivateKeyTrait;
 
-    #[test]
-    fn test_create_legacy_tx() {
-        let tx = Transaction::new(EthTxParams::transfer(
-            [1u8; 20],
-            1_000_000_000_000_000_000,
-            0,
-            20_000_000_000,
-            1,
-        ));
-        assert!(!tx.is_signed());
-        assert_eq!(tx.gas_limit, 21000);
+    const TEST_KEY_BYTES: [u8; 32] =
+        hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
+
+    fn test_key() -> PrivateKey {
+        <PrivateKey as PrivateKeyTrait>::from_bytes(&TEST_KEY_BYTES).unwrap()
     }
 
-    #[test]
-    fn test_create_eip1559_tx() {
-        let tx = Eip1559Transaction::new(Eip1559TxParams::transfer(
-            [1u8; 20],
-            1_000_000_000_000_000_000,
-            0,
-            2_000_000_000,
-            100_000_000_000,
-            1,
-        ));
-        assert!(!tx.is_signed());
-        assert_eq!(tx.gas_limit, 21000);
+    mod transaction_creation_tests {
+        use super::*;
+
+        #[test]
+        fn legacy_tx() {
+            let tx = Transaction::new(EthTxParams::transfer(
+                [1u8; 20],
+                1_000_000_000_000_000_000,
+                0,
+                20_000_000_000,
+                1,
+            ));
+            assert!(!tx.is_signed());
+            assert_eq!(tx.gas_limit, 21000);
+        }
+
+        #[test]
+        fn eip1559_tx() {
+            let tx = Eip1559Transaction::new(Eip1559TxParams::transfer(
+                [1u8; 20],
+                1_000_000_000_000_000_000,
+                0,
+                2_000_000_000,
+                100_000_000_000,
+                1,
+            ));
+            assert!(!tx.is_signed());
+            assert_eq!(tx.gas_limit, 21000);
+        }
     }
 
-    #[test]
-    fn test_rlp_encode_u64() {
-        assert_eq!(rlp_encode_u64(0), vec![0x80]);
-        assert_eq!(rlp_encode_u64(1), vec![0x01]);
-        assert_eq!(rlp_encode_u64(127), vec![0x7f]);
-        assert_eq!(rlp_encode_u64(128), vec![0x81, 0x80]);
-        assert_eq!(rlp_encode_u64(256), vec![0x82, 0x01, 0x00]);
+    mod rlp_encoding_tests {
+        use super::*;
+
+        #[test]
+        fn encode_u64() {
+            assert_eq!(rlp_encode_u64(0), vec![0x80]);
+            assert_eq!(rlp_encode_u64(1), vec![0x01]);
+            assert_eq!(rlp_encode_u64(127), vec![0x7f]);
+            assert_eq!(rlp_encode_u64(128), vec![0x81, 0x80]);
+            assert_eq!(rlp_encode_u64(256), vec![0x82, 0x01, 0x00]);
+        }
+
+        #[test]
+        fn encode_bytes() {
+            assert_eq!(rlp_encode_bytes(&[]), vec![0x80]);
+            assert_eq!(rlp_encode_bytes(&[0x00]), vec![0x00]);
+            assert_eq!(rlp_encode_bytes(&[0x7f]), vec![0x7f]);
+            assert_eq!(rlp_encode_bytes(&[0x80]), vec![0x81, 0x80]);
+        }
+
+        #[test]
+        fn encode_list() {
+            let items: Vec<Vec<u8>> = vec![];
+            assert_eq!(rlp_encode_list(&items), vec![0xc0]);
+
+            let items = vec![vec![0x01], vec![0x02]];
+            assert_eq!(rlp_encode_list(&items), vec![0xc2, 0x01, 0x02]);
+        }
     }
 
-    #[test]
-    fn test_rlp_encode_bytes() {
-        assert_eq!(rlp_encode_bytes(&[]), vec![0x80]);
-        assert_eq!(rlp_encode_bytes(&[0x00]), vec![0x00]);
-        assert_eq!(rlp_encode_bytes(&[0x7f]), vec![0x7f]);
-        assert_eq!(rlp_encode_bytes(&[0x80]), vec![0x81, 0x80]);
+    mod signing_tests {
+        use super::*;
+
+        #[test]
+        fn sign_legacy_tx() {
+            let tx = Transaction::new(EthTxParams::transfer(
+                [1u8; 20],
+                1_000_000_000_000_000_000,
+                0,
+                20_000_000_000,
+                1,
+            ));
+            let signed = tx.sign(&test_key()).unwrap();
+            assert!(signed.is_signed());
+            assert!(signed.v.unwrap() >= 37); // EIP-155: 1 * 2 + 35 = 37
+        }
+
+        #[test]
+        fn sign_eip1559_tx() {
+            let tx = Eip1559Transaction::new(Eip1559TxParams::transfer(
+                [1u8; 20],
+                1_000_000_000_000_000_000,
+                0,
+                2_000_000_000,
+                100_000_000_000,
+                1,
+            ));
+            let signed = tx.sign(&test_key()).unwrap();
+            assert!(signed.is_signed());
+        }
     }
 
-    #[test]
-    fn test_rlp_encode_list() {
-        let items: Vec<Vec<u8>> = vec![];
-        assert_eq!(rlp_encode_list(&items), vec![0xc0]);
+    mod serialization_tests {
+        use super::*;
 
-        let items = vec![vec![0x01], vec![0x02]];
-        assert_eq!(rlp_encode_list(&items), vec![0xc2, 0x01, 0x02]);
+        #[test]
+        fn tx_hash_display() {
+            let hash = TxId([
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+                0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,
+                0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
+            ]);
+            assert!(hash.to_string().starts_with("0x0102"));
+        }
+
+        #[test]
+        fn to_hex() {
+            let tx = Transaction::new(EthTxParams::transfer([1u8; 20], 0, 0, 20_000_000_000, 1));
+            assert!(tx.to_hex().starts_with("0x"));
+        }
     }
 
-    #[test]
-    fn test_tx_hash_display() {
-        let hash = TxId([
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
-            0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
-            0x1d, 0x1e, 0x1f, 0x20,
-        ]);
-        let display = hash.to_string();
-        assert!(display.starts_with("0x0102"));
-    }
-
-    #[test]
-    fn test_sign_legacy_tx() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-
-        let tx = Transaction::new(EthTxParams::transfer(
-            [1u8; 20],
-            1_000_000_000_000_000_000,
-            0,
-            20_000_000_000,
-            1,
-        ));
-
-        let signed = tx.sign(&key).unwrap();
-        assert!(signed.is_signed());
-        assert!(signed.v.unwrap() >= 37); // EIP-155: 1 * 2 + 35 = 37
-    }
-
-    #[test]
-    fn test_sign_eip1559_tx() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-
-        let tx = Eip1559Transaction::new(Eip1559TxParams::transfer(
-            [1u8; 20],
-            1_000_000_000_000_000_000,
-            0,
-            2_000_000_000,
-            100_000_000_000,
-            1,
-        ));
-
-        let signed = tx.sign(&key).unwrap();
-        assert!(signed.is_signed());
-    }
-
-    #[test]
-    fn test_serialize_to_hex() {
-        let tx = Transaction::new(EthTxParams::transfer([1u8; 20], 0, 0, 20_000_000_000, 1));
-
-        let hex = tx.to_hex();
-        assert!(hex.starts_with("0x"));
-    }
-
-    #[test]
-    fn test_transfer_on_network() {
+    mod network_tests {
+        use super::*;
         use crate::network::Network;
 
-        let recipient = Address::from_bytes([1u8; 20]);
+        #[test]
+        fn legacy_transfer_on_networks() {
+            let recipient = Address::from_bytes([1u8; 20]);
 
-        // Create mainnet transaction
-        let tx = Transaction::transfer_on(
-            Network::Mainnet,
-            recipient.clone(),
-            1_000_000_000_000_000_000,
-            0,
-            20_000_000_000,
-        );
-        assert_eq!(tx.chain_id, 1);
-        assert_eq!(tx.network(), Some(Network::Mainnet));
+            let mainnet_tx = Transaction::transfer_on(
+                Network::Mainnet,
+                recipient.clone(),
+                1_000_000_000_000_000_000,
+                0,
+                20_000_000_000,
+            );
+            assert_eq!(mainnet_tx.chain_id, 1);
+            assert_eq!(mainnet_tx.network(), Some(Network::Mainnet));
 
-        // Create BSC transaction
-        let bsc_tx = Transaction::transfer_on(
-            Network::BinanceSmartChain,
-            recipient.clone(),
-            1_000_000_000_000_000_000,
-            0,
-            5_000_000_000,
-        );
-        assert_eq!(bsc_tx.chain_id, 56);
-        assert_eq!(bsc_tx.network(), Some(Network::BinanceSmartChain));
+            let bsc_tx = Transaction::transfer_on(
+                Network::BinanceSmartChain,
+                recipient.clone(),
+                1_000_000_000_000_000_000,
+                0,
+                5_000_000_000,
+            );
+            assert_eq!(bsc_tx.chain_id, 56);
 
-        // Create Polygon transaction
-        let polygon_tx = Transaction::transfer_on(
-            Network::Polygon,
-            recipient,
-            1_000_000_000_000_000_000,
-            0,
-            30_000_000_000,
-        );
-        assert_eq!(polygon_tx.chain_id, 137);
-    }
+            let polygon_tx = Transaction::transfer_on(
+                Network::Polygon,
+                recipient,
+                1_000_000_000_000_000_000,
+                0,
+                30_000_000_000,
+            );
+            assert_eq!(polygon_tx.chain_id, 137);
+        }
 
-    #[test]
-    fn test_eip1559_transfer_on_network() {
-        use crate::network::Network;
-
-        let recipient = Address::from_bytes([1u8; 20]);
-
-        let tx = Eip1559Transaction::transfer_on(
-            Network::Mainnet,
-            recipient,
-            1_000_000_000_000_000_000,
-            0,
-            2_000_000_000,
-            100_000_000_000,
-        );
-
-        assert_eq!(tx.chain_id, 1);
-        assert_eq!(tx.network(), Some(Network::Mainnet));
-        assert_eq!(tx.gas_limit, 21000);
+        #[test]
+        fn eip1559_transfer_on_mainnet() {
+            let recipient = Address::from_bytes([1u8; 20]);
+            let tx = Eip1559Transaction::transfer_on(
+                Network::Mainnet,
+                recipient,
+                1_000_000_000_000_000_000,
+                0,
+                2_000_000_000,
+                100_000_000_000,
+            );
+            assert_eq!(tx.chain_id, 1);
+            assert_eq!(tx.network(), Some(Network::Mainnet));
+            assert_eq!(tx.gas_limit, 21000);
+        }
     }
 }

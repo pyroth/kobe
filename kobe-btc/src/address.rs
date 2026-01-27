@@ -333,116 +333,97 @@ mod tests {
     use crate::PrivateKey;
     use kobe::PrivateKey as PrivateKeyTrait;
 
-    #[test]
-    fn test_p2pkh_address() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key.address(Network::Mainnet, AddressFormat::P2PKH).unwrap();
-        assert_eq!(addr.to_string(), "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK");
+    /// Test key bytes used across all tests
+    const TEST_KEY_BYTES: [u8; 32] =
+        hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
+
+    fn test_key() -> PrivateKey {
+        <PrivateKey as PrivateKeyTrait>::from_bytes(&TEST_KEY_BYTES).unwrap()
     }
 
-    #[test]
-    fn test_p2wpkh_address() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key
-            .address(Network::Mainnet, AddressFormat::P2WPKH)
-            .unwrap();
-        let addr_str = addr.to_string();
-        assert!(addr_str.starts_with("bc1q"));
+    mod address_generation_tests {
+        use super::*;
+
+        #[test]
+        fn p2pkh_mainnet() {
+            let addr = test_key().address(Network::Mainnet, AddressFormat::P2PKH).unwrap();
+            assert_eq!(addr.to_string(), "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK");
+        }
+
+        #[test]
+        fn p2pkh_testnet() {
+            let addr = test_key().address(Network::Testnet, AddressFormat::P2PKH).unwrap();
+            let addr_str = addr.to_string();
+            assert!(addr_str.starts_with('m') || addr_str.starts_with('n'));
+        }
+
+        #[test]
+        fn p2wpkh_mainnet() {
+            let addr = test_key().address(Network::Mainnet, AddressFormat::P2WPKH).unwrap();
+            assert!(addr.to_string().starts_with("bc1q"));
+        }
+
+        #[test]
+        fn p2sh_p2wpkh_mainnet() {
+            let addr = test_key().address(Network::Mainnet, AddressFormat::P2SHP2WPKH).unwrap();
+            assert!(addr.to_string().starts_with('3'));
+        }
+
+        #[test]
+        fn p2tr_mainnet() {
+            let addr = test_key().address(Network::Mainnet, AddressFormat::P2TR).unwrap();
+            let addr_str = addr.to_string();
+            assert!(addr_str.starts_with("bc1p"), "Expected bc1p prefix, got: {}", addr_str);
+            assert_eq!(addr.format(), AddressFormat::P2TR);
+        }
     }
 
-    #[test]
-    fn test_p2sh_p2wpkh_address() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key
-            .address(Network::Mainnet, AddressFormat::P2SHP2WPKH)
-            .unwrap();
-        let addr_str = addr.to_string();
-        assert!(addr_str.starts_with('3')); // Mainnet P2SH starts with 3
+    mod address_parsing_tests {
+        use super::*;
+
+        #[test]
+        fn parse_p2pkh() {
+            let addr: Address = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK".parse().unwrap();
+            assert_eq!(addr.network(), Network::Mainnet);
+            assert_eq!(addr.format(), AddressFormat::P2PKH);
+        }
+
+        #[test]
+        fn parse_p2sh() {
+            let addr: Address = "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy".parse().unwrap();
+            assert_eq!(addr.network(), Network::Mainnet);
+            assert_eq!(addr.format(), AddressFormat::P2SH);
+        }
+
+        #[test]
+        fn parse_bech32() {
+            let addr = test_key().address(Network::Mainnet, AddressFormat::P2WPKH).unwrap();
+            let addr_str = addr.to_string();
+            let parsed: Address = addr_str.parse().unwrap();
+            assert_eq!(parsed.network(), Network::Mainnet);
+            assert_eq!(parsed.format(), AddressFormat::P2WPKH);
+            assert_eq!(parsed.to_string(), addr_str);
+        }
     }
 
-    #[test]
-    fn test_parse_p2pkh_address() {
-        let addr: Address = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK".parse().unwrap();
-        assert_eq!(addr.network(), Network::Mainnet);
-        assert_eq!(addr.format(), AddressFormat::P2PKH);
-    }
+    mod roundtrip_tests {
+        use super::*;
 
-    #[test]
-    fn test_parse_p2sh_address() {
-        let addr: Address = "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy".parse().unwrap();
-        assert_eq!(addr.network(), Network::Mainnet);
-        assert_eq!(addr.format(), AddressFormat::P2SH);
-    }
+        #[test]
+        fn p2pkh_roundtrip() {
+            let original = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK";
+            let addr: Address = original.parse().unwrap();
+            assert_eq!(addr.to_string(), original);
+        }
 
-    #[test]
-    fn test_parse_bech32_address() {
-        // Generate an address and test roundtrip parsing
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key
-            .address(Network::Mainnet, AddressFormat::P2WPKH)
-            .unwrap();
-        let addr_str = addr.to_string();
-
-        // Parse it back
-        let parsed: Address = addr_str.parse().unwrap();
-        assert_eq!(parsed.network(), Network::Mainnet);
-        assert_eq!(parsed.format(), AddressFormat::P2WPKH);
-        assert_eq!(parsed.to_string(), addr_str);
-    }
-
-    #[test]
-    fn test_address_roundtrip_p2pkh() {
-        let original = "1LoVGDgRs9hTfTNJNuXKSpywcbdvwRXpmK";
-        let addr: Address = original.parse().unwrap();
-        assert_eq!(addr.to_string(), original);
-    }
-
-    #[test]
-    fn test_testnet_address() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key.address(Network::Testnet, AddressFormat::P2PKH).unwrap();
-        let addr_str = addr.to_string();
-        assert!(addr_str.starts_with('m') || addr_str.starts_with('n'));
-    }
-
-    #[test]
-    fn test_p2tr_taproot_address() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key.address(Network::Mainnet, AddressFormat::P2TR).unwrap();
-        let addr_str = addr.to_string();
-        // P2TR addresses start with bc1p on mainnet
-        assert!(
-            addr_str.starts_with("bc1p"),
-            "Expected bc1p prefix, got: {}",
-            addr_str
-        );
-        assert_eq!(addr.format(), AddressFormat::P2TR);
-    }
-
-    #[test]
-    fn test_p2tr_roundtrip() {
-        let bytes =
-            hex_literal::hex!("0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d");
-        let key = <PrivateKey as PrivateKeyTrait>::from_bytes(&bytes).unwrap();
-        let addr = key.address(Network::Mainnet, AddressFormat::P2TR).unwrap();
-        let addr_str = addr.to_string();
-
-        // Parse it back
-        let parsed: Address = addr_str.parse().unwrap();
-        assert_eq!(parsed.network(), Network::Mainnet);
-        assert_eq!(parsed.format(), AddressFormat::P2TR);
-        assert_eq!(parsed.to_string(), addr_str);
+        #[test]
+        fn p2tr_roundtrip() {
+            let addr = test_key().address(Network::Mainnet, AddressFormat::P2TR).unwrap();
+            let addr_str = addr.to_string();
+            let parsed: Address = addr_str.parse().unwrap();
+            assert_eq!(parsed.network(), Network::Mainnet);
+            assert_eq!(parsed.format(), AddressFormat::P2TR);
+            assert_eq!(parsed.to_string(), addr_str);
+        }
     }
 }

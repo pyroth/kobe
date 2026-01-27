@@ -157,32 +157,41 @@ impl From<Address> for [u8; 20] {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_from_str() {
-        let addr: Address = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
-            .parse()
-            .unwrap();
-        let expected = hex_literal::hex!("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
-        assert_eq!(addr.as_bytes(), &expected);
+    /// EIP-55 test address
+    const TEST_ADDR_LOWER: &str = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed";
+    const TEST_ADDR_CHECKSUM: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
+
+    mod parsing_tests {
+        use super::*;
+
+        #[test]
+        fn from_checksum_str() {
+            let addr: Address = TEST_ADDR_CHECKSUM.parse().unwrap();
+            let expected = hex_literal::hex!("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
+            assert_eq!(addr.as_bytes(), &expected);
+        }
+
+        #[test]
+        fn from_lowercase_str() {
+            let addr: Address = TEST_ADDR_LOWER.parse().unwrap();
+            let expected = hex_literal::hex!("5aaeb6053f3e94c9b9a09f33669435e7ef1beaed");
+            assert_eq!(addr.as_bytes(), &expected);
+        }
     }
 
-    #[test]
-    fn test_checksum() {
-        let addr: Address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
-            .parse()
-            .unwrap();
-        assert_eq!(
-            addr.to_checksum_string(),
-            "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
-        );
-    }
+    mod display_tests {
+        use super::*;
 
-    #[test]
-    fn test_display() {
-        let addr: Address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
-            .parse()
-            .unwrap();
-        let displayed = addr.to_string();
-        assert_eq!(displayed, "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
+        #[test]
+        fn to_checksum_string() {
+            let addr: Address = TEST_ADDR_LOWER.parse().unwrap();
+            assert_eq!(addr.to_checksum_string(), TEST_ADDR_CHECKSUM);
+        }
+
+        #[test]
+        fn display_uses_checksum() {
+            let addr: Address = TEST_ADDR_LOWER.parse().unwrap();
+            assert_eq!(addr.to_string(), TEST_ADDR_CHECKSUM);
+        }
     }
 }

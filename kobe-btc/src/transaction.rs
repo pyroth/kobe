@@ -433,94 +433,95 @@ pub fn p2wpkh_script(pubkey_hash: &[u8; 20]) -> Vec<u8> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_create_transaction() {
-        let tx = Transaction::new(Network::Mainnet);
-        assert_eq!(tx.version, 2);
-        assert!(tx.inputs.is_empty());
-        assert!(tx.outputs.is_empty());
+    mod transaction_tests {
+        use super::*;
+
+        #[test]
+        fn new_transaction() {
+            let tx = Transaction::new(Network::Mainnet);
+            assert_eq!(tx.version, 2);
+            assert!(tx.inputs.is_empty());
+            assert!(tx.outputs.is_empty());
+        }
+
+        #[test]
+        fn add_input_output() {
+            let mut tx = Transaction::new(Network::Mainnet);
+            tx.add_input(TxInput::new([0u8; 32], 0, Some(100_000)));
+            tx.add_output(TxOutput::new(90_000, p2pkh_script(&[0u8; 20])));
+            assert_eq!(tx.inputs.len(), 1);
+            assert_eq!(tx.outputs.len(), 1);
+        }
+
+        #[test]
+        fn serialize_empty() {
+            let tx = Transaction::new(Network::Mainnet);
+            let bytes = tx.to_bytes();
+            // version (4) + input count (1) + output count (1) + locktime (4) = 10
+            assert_eq!(bytes.len(), 10);
+        }
+
+        #[test]
+        fn vsize_legacy() {
+            let mut tx = Transaction::new(Network::Mainnet);
+            tx.add_input(TxInput::new([0u8; 32], 0, None));
+            tx.add_output(TxOutput::new(1000, p2pkh_script(&[0u8; 20])));
+            // For legacy tx, vsize == size
+            assert_eq!(tx.vsize(), tx.to_bytes().len());
+        }
     }
 
-    #[test]
-    fn test_add_input_output() {
-        let mut tx = Transaction::new(Network::Mainnet);
+    mod script_tests {
+        use super::*;
 
-        let input = TxInput::new([0u8; 32], 0, Some(100000));
-        tx.add_input(input);
+        #[test]
+        fn p2pkh_script_format() {
+            let script = p2pkh_script(&[0u8; 20]);
+            assert_eq!(script.len(), 25);
+            assert_eq!(script[0], 0x76); // OP_DUP
+            assert_eq!(script[24], 0xac); // OP_CHECKSIG
+        }
 
-        let output = TxOutput::new(90000, p2pkh_script(&[0u8; 20]));
-        tx.add_output(output);
-
-        assert_eq!(tx.inputs.len(), 1);
-        assert_eq!(tx.outputs.len(), 1);
+        #[test]
+        fn p2wpkh_script_format() {
+            let script = p2wpkh_script(&[0u8; 20]);
+            assert_eq!(script.len(), 22);
+            assert_eq!(script[0], 0x00); // OP_0
+            assert_eq!(script[1], 0x14); // Push 20 bytes
+        }
     }
 
-    #[test]
-    fn test_p2pkh_script() {
-        let hash = [0u8; 20];
-        let script = p2pkh_script(&hash);
-        assert_eq!(script.len(), 25);
-        assert_eq!(script[0], 0x76); // OP_DUP
-        assert_eq!(script[24], 0xac); // OP_CHECKSIG
-    }
+    mod encoding_tests {
+        use super::*;
 
-    #[test]
-    fn test_p2wpkh_script() {
-        let hash = [0u8; 20];
-        let script = p2wpkh_script(&hash);
-        assert_eq!(script.len(), 22);
-        assert_eq!(script[0], 0x00); // OP_0
-        assert_eq!(script[1], 0x14); // Push 20 bytes
-    }
+        #[test]
+        fn txid_display_reversed() {
+            let txid = TxId([
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+                0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,
+                0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
+            ]);
+            assert!(txid.to_string().starts_with("201f1e1d"));
+        }
 
-    #[test]
-    fn test_txid_display() {
-        let txid = TxId([
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
-            0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
-            0x1d, 0x1e, 0x1f, 0x20,
-        ]);
-        let display = txid.to_string();
-        // Should be reversed
-        assert!(display.starts_with("201f1e1d"));
-    }
+        #[test]
+        fn varint_encoding() {
+            let mut data = Vec::new();
 
-    #[test]
-    fn test_varint_encoding() {
-        let mut data = Vec::new();
-        write_varint(&mut data, 0);
-        assert_eq!(data, vec![0]);
+            write_varint(&mut data, 0);
+            assert_eq!(data, vec![0]);
 
-        data.clear();
-        write_varint(&mut data, 252);
-        assert_eq!(data, vec![252]);
+            data.clear();
+            write_varint(&mut data, 252);
+            assert_eq!(data, vec![252]);
 
-        data.clear();
-        write_varint(&mut data, 253);
-        assert_eq!(data, vec![0xfd, 253, 0]);
+            data.clear();
+            write_varint(&mut data, 253);
+            assert_eq!(data, vec![0xfd, 253, 0]);
 
-        data.clear();
-        write_varint(&mut data, 0x10000);
-        assert_eq!(data, vec![0xfe, 0, 0, 1, 0]);
-    }
-
-    #[test]
-    fn test_serialize_empty_tx() {
-        let tx = Transaction::new(Network::Mainnet);
-        let bytes = tx.to_bytes();
-        // version (4) + input count (1) + output count (1) + locktime (4) = 10
-        assert_eq!(bytes.len(), 10);
-    }
-
-    #[test]
-    fn test_vsize_legacy() {
-        let mut tx = Transaction::new(Network::Mainnet);
-        tx.add_input(TxInput::new([0u8; 32], 0, None));
-        tx.add_output(TxOutput::new(1000, p2pkh_script(&[0u8; 20])));
-
-        let vsize = tx.vsize();
-        let bytes = tx.to_bytes();
-        // For legacy tx, vsize == size
-        assert_eq!(vsize, bytes.len());
+            data.clear();
+            write_varint(&mut data, 0x10000);
+            assert_eq!(data, vec![0xfe, 0, 0, 1, 0]);
+        }
     }
 }

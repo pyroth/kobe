@@ -116,64 +116,61 @@ mod tests {
     use crate::privkey::PrivateKey;
     use kobe::PrivateKey as PrivateKeyTrait;
 
-    #[test]
-    fn test_public_key_derivation() {
-        let private_key: PrivateKey =
-            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-                .parse()
-                .unwrap();
-        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
-        let compressed = kobe::PublicKey::to_bytes(&public_key);
-        assert_eq!(compressed.len(), 33);
+    const TEST_KEY_HEX: &str = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318";
 
-        let recovered = <PublicKey as kobe::PublicKey>::from_bytes(&compressed).unwrap();
-        assert_eq!(public_key, recovered);
+    fn test_keypair() -> (PrivateKey, PublicKey) {
+        let private_key: PrivateKey = TEST_KEY_HEX.parse().unwrap();
+        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
+        (private_key, public_key)
     }
 
-    #[test]
-    fn test_sign_and_verify() {
-        let private_key: PrivateKey =
-            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-                .parse()
-                .unwrap();
-        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
+    mod derivation_tests {
+        use super::*;
 
-        let hash = [0u8; 32];
-        let signature = <PrivateKey as PrivateKeyTrait>::sign_prehash(&private_key, &hash).unwrap();
+        #[test]
+        fn from_private_key() {
+            let (_, public_key) = test_keypair();
+            let compressed = kobe::PublicKey::to_bytes(&public_key);
+            assert_eq!(compressed.len(), 33);
 
-        kobe::PublicKey::verify(&public_key, &hash, &signature).unwrap();
+            let recovered = <PublicKey as kobe::PublicKey>::from_bytes(&compressed).unwrap();
+            assert_eq!(public_key, recovered);
+        }
     }
 
-    #[test]
-    fn test_recover() {
-        let private_key: PrivateKey =
-            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-                .parse()
-                .unwrap();
-        let public_key = <PrivateKey as PrivateKeyTrait>::public_key(&private_key);
+    mod signature_tests {
+        use super::*;
 
-        let hash = [1u8; 32];
-        let signature = <PrivateKey as PrivateKeyTrait>::sign_prehash(&private_key, &hash).unwrap();
+        #[test]
+        fn sign_and_verify() {
+            let (private_key, public_key) = test_keypair();
+            let hash = [0u8; 32];
+            let signature =
+                <PrivateKey as PrivateKeyTrait>::sign_prehash(&private_key, &hash).unwrap();
+            kobe::PublicKey::verify(&public_key, &hash, &signature).unwrap();
+        }
 
-        let recovered = PublicKey::recover_from_prehash(&hash, &signature).unwrap();
-        assert_eq!(public_key, recovered);
-    }
+        #[test]
+        fn recover_from_prehash() {
+            let (private_key, public_key) = test_keypair();
+            let hash = [1u8; 32];
+            let signature =
+                <PrivateKey as PrivateKeyTrait>::sign_prehash(&private_key, &hash).unwrap();
+            let recovered = PublicKey::recover_from_prehash(&hash, &signature).unwrap();
+            assert_eq!(public_key, recovered);
+        }
 
-    #[test]
-    fn test_recover_from_message() {
-        let private_key: PrivateKey =
-            "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
-                .parse()
-                .unwrap();
-        let expected_address = private_key.address();
+        #[test]
+        fn recover_from_message() {
+            let (private_key, _) = test_keypair();
+            let expected_address = private_key.address();
 
-        let message = b"Hello, Ethereum!";
-        let signature = private_key.sign_message(message).unwrap();
+            let message = b"Hello, Ethereum!";
+            let signature = private_key.sign_message(message).unwrap();
 
-        // Recover public key from message signature
-        let recovered = PublicKey::recover_from_message(message, &signature).unwrap();
-        let recovered_address = kobe::PublicKey::to_address(&recovered);
-
-        assert_eq!(expected_address, recovered_address);
+            let recovered = PublicKey::recover_from_message(message, &signature).unwrap();
+            let recovered_address = kobe::PublicKey::to_address(&recovered);
+            assert_eq!(expected_address, recovered_address);
+        }
     }
 }
