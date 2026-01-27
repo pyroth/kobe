@@ -16,6 +16,8 @@ pub enum Error {
     InvalidWordCount(usize),
     /// Invalid derivation path.
     InvalidDerivationPath(String),
+    /// Invalid WIF (Wallet Import Format) private key.
+    InvalidWif,
     /// Secp256k1 error.
     Secp256k1(bitcoin::secp256k1::Error),
 }
@@ -29,6 +31,7 @@ impl fmt::Display for Error {
                 write!(f, "invalid word count {n}, must be 12, 15, 18, 21, or 24")
             }
             Self::InvalidDerivationPath(p) => write!(f, "invalid derivation path: {p}"),
+            Self::InvalidWif => write!(f, "invalid WIF format"),
             Self::Secp256k1(e) => write!(f, "secp256k1 error: {e}"),
         }
     }
@@ -41,7 +44,7 @@ impl std::error::Error for Error {
             Self::Mnemonic(e) => Some(e),
             Self::Bip32(e) => Some(e),
             Self::Secp256k1(e) => Some(e),
-            Self::InvalidWordCount(_) | Self::InvalidDerivationPath(_) => None,
+            Self::InvalidWordCount(_) | Self::InvalidDerivationPath(_) | Self::InvalidWif => None,
         }
     }
 }

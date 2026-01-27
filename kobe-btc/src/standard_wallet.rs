@@ -64,9 +64,7 @@ impl StandardWallet {
     ///
     /// Returns an error if the WIF is invalid.
     pub fn from_wif(wif: &str, address_type: AddressType) -> Result<Self, Error> {
-        let private_key: PrivateKey = wif
-            .parse()
-            .map_err(|_| Error::InvalidDerivationPath("invalid WIF format".to_string()))?;
+        let private_key: PrivateKey = wif.parse().map_err(|_| Error::InvalidWif)?;
 
         let network = if private_key.network == NetworkKind::Main {
             Network::Mainnet

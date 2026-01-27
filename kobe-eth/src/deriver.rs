@@ -173,14 +173,14 @@ impl<'a> Deriver<'a> {
                 .try_into()
                 .map_err(|_| Error::Derivation("invalid key length".to_string()))?;
 
-            let il_scalar = Scalar::from_repr(il_arr.into());
-            let key_scalar = Scalar::from_repr(key_arr.into());
+            let il_scalar: Option<Scalar> = Scalar::from_repr(il_arr.into()).into();
+            let il_scalar =
+                il_scalar.ok_or_else(|| Error::Derivation("invalid IL scalar".to_string()))?;
+            let key_scalar: Option<Scalar> = Scalar::from_repr(key_arr.into()).into();
+            let key_scalar =
+                key_scalar.ok_or_else(|| Error::Derivation("invalid key scalar".to_string()))?;
 
-            if il_scalar.is_none().into() || key_scalar.is_none().into() {
-                return Err(Error::Derivation("invalid scalar".to_string()));
-            }
-
-            let new_key = il_scalar.unwrap() + key_scalar.unwrap();
+            let new_key = il_scalar + key_scalar;
             key = new_key.to_bytes().to_vec();
             chain_code = result[32..].to_vec();
         }
