@@ -7,16 +7,13 @@ use alloc::{
     vec::Vec,
 };
 
-use hmac::{Hmac, Mac};
-use k256::{Scalar, ecdsa::SigningKey, elliptic_curve::PrimeField};
+use coins_bip32::{path::DerivationPath as Bip32Path, xkeys::XPriv};
+use k256::ecdsa::SigningKey;
 use kobe_core::Wallet;
-use sha2::Sha512;
 use zeroize::Zeroizing;
 
 use crate::Error;
 use crate::utils::{public_key_to_address, to_checksum_address};
-
-type HmacSha512 = Hmac<Sha512>;
 
 /// Ethereum address deriver from a unified wallet seed.
 ///
@@ -109,83 +106,24 @@ impl<'a> Deriver<'a> {
             .collect()
     }
 
-    /// Derive a private key at the given path.
+    /// Derive a private key at the given path using coins-bip32.
     fn derive_key(&self, path: &str) -> Result<SigningKey, Error> {
-        // Parse path
-        let path_str = path.strip_prefix("m/").unwrap_or(path);
-        let indices: Result<Vec<u32>, _> = path_str
-            .split('/')
-            .filter(|s| !s.is_empty())
-            .map(|component| {
-                let (num_str, hardened) = if let Some(s) = component.strip_suffix('\'') {
-                    (s, true)
-                } else if let Some(s) = component.strip_suffix('h') {
-                    (s, true)
-                } else {
-                    (component, false)
-                };
+        // Create master key from seed
+        let master = XPriv::root_from_seed(self.wallet.seed(), None)
+            .map_err(|e| Error::Derivation(format!("master key derivation failed: {e}")))?;
 
-                num_str
-                    .parse::<u32>()
-                    .map(|n| if hardened { n | 0x8000_0000 } else { n })
-                    .map_err(|_| Error::Derivation(format!("invalid path component: {component}")))
-            })
-            .collect();
+        // Parse and derive path
+        let derivation_path: Bip32Path = path
+            .parse()
+            .map_err(|e| Error::Derivation(format!("invalid derivation path: {e}")))?;
 
-        let indices = indices?;
+        let derived = master
+            .derive_path(&derivation_path)
+            .map_err(|e| Error::Derivation(format!("key derivation failed: {e}")))?;
 
-        // Master key derivation
-        let mut mac =
-            HmacSha512::new_from_slice(b"Bitcoin seed").expect("HMAC can take key of any size");
-        mac.update(self.wallet.seed());
-        let result = mac.finalize().into_bytes();
-
-        let mut key = result[..32].to_vec();
-        let mut chain_code = result[32..].to_vec();
-
-        // Derive child keys
-        for index in indices {
-            let mut mac =
-                HmacSha512::new_from_slice(&chain_code).expect("HMAC can take key of any size");
-
-            if index & 0x8000_0000 != 0 {
-                // Hardened derivation
-                mac.update(&[0u8]);
-                mac.update(&key);
-            } else {
-                // Normal derivation
-                let signing_key =
-                    SigningKey::from_slice(&key).map_err(|_| Error::InvalidPrivateKey)?;
-                let public_key = signing_key.verifying_key().to_encoded_point(true);
-                mac.update(public_key.as_bytes());
-            }
-            mac.update(&index.to_be_bytes());
-
-            let result = mac.finalize().into_bytes();
-            let il = &result[..32];
-
-            // Add il to key mod n
-            let il_arr: [u8; 32] = (*il)
-                .try_into()
-                .map_err(|_| Error::Derivation("invalid IL length".to_string()))?;
-            let key_arr: [u8; 32] = key
-                .as_slice()
-                .try_into()
-                .map_err(|_| Error::Derivation("invalid key length".to_string()))?;
-
-            let il_scalar: Option<Scalar> = Scalar::from_repr(il_arr.into()).into();
-            let il_scalar =
-                il_scalar.ok_or_else(|| Error::Derivation("invalid IL scalar".to_string()))?;
-            let key_scalar: Option<Scalar> = Scalar::from_repr(key_arr.into()).into();
-            let key_scalar =
-                key_scalar.ok_or_else(|| Error::Derivation("invalid key scalar".to_string()))?;
-
-            let new_key = il_scalar + key_scalar;
-            key = new_key.to_bytes().to_vec();
-            chain_code = result[32..].to_vec();
-        }
-
-        SigningKey::from_slice(&key).map_err(|_| Error::InvalidPrivateKey)
+        // XPriv implements AsRef<SigningKey>, clone the key
+        let signing_key: &SigningKey = derived.as_ref();
+        Ok(signing_key.clone())
     }
 }
 

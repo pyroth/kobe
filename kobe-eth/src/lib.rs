@@ -14,8 +14,11 @@
 //! use kobe_core::Wallet;
 //! use kobe_eth::Deriver;
 //!
-//! // Create a wallet from kobe-core
-//! let wallet = Wallet::generate(12, None).unwrap();
+//! // Create a wallet from mnemonic
+//! let wallet = Wallet::from_mnemonic(
+//!     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+//!     None
+//! ).unwrap();
 //!
 //! // Derive Ethereum addresses from the wallet
 //! let deriver = Deriver::new(&wallet);

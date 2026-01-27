@@ -12,7 +12,6 @@ categories = ["cryptography", "no-std"]
 default = ["std"]
 std = ["alloc", "kobe-core/std", "bitcoin/std", "bip39/std", "hex/std", "zeroize/std"]
 alloc = ["kobe-core/alloc", "bip39/alloc", "hex/alloc", "zeroize/alloc"]
-# Enable random key generation for StandardWallet
 rand = ["std", "bitcoin/rand-std"]
 
 [dependencies]

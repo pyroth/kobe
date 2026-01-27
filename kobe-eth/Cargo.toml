@@ -10,7 +10,7 @@ categories = ["cryptography", "no-std"]
 
 [features]
 default = ["std"]
-std = ["alloc", "kobe-core/std", "k256/std", "hmac/std", "sha2/std", "hex/std", "zeroize/std"]
+std = ["alloc", "kobe-core/std", "k256/std", "hex/std", "zeroize/std"]
 alloc = ["kobe-core/alloc", "hex/alloc", "zeroize/alloc"]
 # Enable random key generation for StandardWallet (requires std)
 rand = ["std"]
@@ -18,8 +18,7 @@ rand = ["std"]
 [dependencies]
 kobe-core.workspace = true
 alloy-primitives.workspace = true
+coins-bip32.workspace = true
 k256.workspace = true
-hmac.workspace = true
-sha2.workspace = true
 hex.workspace = true
 zeroize.workspace = true
