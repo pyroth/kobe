@@ -32,6 +32,8 @@
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
+mod derivation_style;
+#[cfg(feature = "alloc")]
 mod deriver;
 mod error;
 #[cfg(feature = "alloc")]
@@ -39,6 +41,8 @@ mod slip10;
 #[cfg(feature = "alloc")]
 mod standard_wallet;
 
+#[cfg(feature = "alloc")]
+pub use derivation_style::{DerivationStyle, ParseDerivationStyleError};
 #[cfg(feature = "alloc")]
 pub use deriver::{DerivedAddress, Deriver};
 pub use error::Error;

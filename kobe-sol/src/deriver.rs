@@ -6,6 +6,7 @@ use ed25519_dalek::VerifyingKey;
 use zeroize::Zeroizing;
 
 use crate::Error;
+use crate::derivation_style::DerivationStyle;
 use crate::slip10::DerivedKey;
 use kobe_core::Wallet;
 
@@ -52,68 +53,82 @@ impl<'a> Deriver<'a> {
         Self { wallet }
     }
 
-    /// Derive a Solana address at the given account index.
+    /// Derive a Solana address using the default Standard style.
     ///
-    /// Uses path: m/44'/501'/account'/0'
+    /// Uses path: `m/44'/501'/index'/0'` (Phantom, Backpack, etc.)
     ///
     /// # Errors
     ///
     /// Returns an error if derivation fails.
     #[inline]
-    pub fn derive(&self, account: u32) -> Result<DerivedAddress, Error> {
-        self.derive_with_change(account, 0)
+    pub fn derive(&self, index: u32) -> Result<DerivedAddress, Error> {
+        self.derive_with_style(DerivationStyle::Standard, index)
     }
 
-    /// Derive a Solana address with custom account and change index.
-    ///
-    /// Uses path: m/44'/501'/account'/change'
+    /// Derive a Solana address with a specific derivation style.
     ///
     /// # Errors
     ///
     /// Returns an error if derivation fails.
-    pub fn derive_with_change(&self, account: u32, change: u32) -> Result<DerivedAddress, Error> {
-        let path = DerivedKey::format_path(account, change);
-        self.derive_at_path(account, change).map(|mut addr| {
-            addr.path = path;
-            addr
-        })
-    }
+    #[allow(deprecated)]
+    pub fn derive_with_style(
+        &self,
+        style: DerivationStyle,
+        index: u32,
+    ) -> Result<DerivedAddress, Error> {
+        let derived = match style {
+            DerivationStyle::Standard => {
+                DerivedKey::derive_standard_path(self.wallet.seed(), index)?
+            }
+            DerivationStyle::LedgerNative => {
+                DerivedKey::derive_ledger_native_path(self.wallet.seed(), index)?
+            }
+            DerivationStyle::LedgerLive => {
+                DerivedKey::derive_ledger_live_path(self.wallet.seed(), index)?
+            }
+            DerivationStyle::Legacy => DerivedKey::derive_legacy_path(self.wallet.seed(), index)?,
+        };
 
-    /// Internal derivation at specific account/change indices.
-    fn derive_at_path(&self, account: u32, change: u32) -> Result<DerivedAddress, Error> {
-        let derived = DerivedKey::derive_solana_path(self.wallet.seed(), account, change)?;
         let signing_key = derived.to_signing_key();
         let verifying_key: VerifyingKey = signing_key.verifying_key();
-
         let public_key_bytes = verifying_key.as_bytes();
-        let address = bs58::encode(public_key_bytes).into_string();
 
         Ok(DerivedAddress {
-            path: DerivedKey::format_path(account, change),
+            path: style.path(index),
             private_key_hex: Zeroizing::new(hex::encode(derived.private_key.as_slice())),
             public_key_hex: hex::encode(public_key_bytes),
-            address,
+            address: bs58::encode(public_key_bytes).into_string(),
         })
     }
 
-    /// Derive multiple addresses in sequence.
-    ///
-    /// # Arguments
-    ///
-    /// * `start_index` - Starting account index
-    /// * `count` - Number of addresses to derive
+    /// Derive multiple addresses using the default Standard style.
     ///
     /// # Errors
     ///
     /// Returns an error if any derivation fails.
     pub fn derive_many(&self, start_index: u32, count: u32) -> Result<Vec<DerivedAddress>, Error> {
+        self.derive_many_with_style(DerivationStyle::Standard, start_index, count)
+    }
+
+    /// Derive multiple addresses with a specific derivation style.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any derivation fails.
+    pub fn derive_many_with_style(
+        &self,
+        style: DerivationStyle,
+        start_index: u32,
+        count: u32,
+    ) -> Result<Vec<DerivedAddress>, Error> {
         (start_index..start_index + count)
-            .map(|account| self.derive(account))
+            .map(|account| self.derive_with_style(style, account))
             .collect()
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 
@@ -162,5 +177,54 @@ mod tests {
 
         assert_eq!(addr1.address, addr2.address);
         assert_eq!(*addr1.private_key_hex, *addr2.private_key_hex);
+    }
+
+    #[test]
+    fn test_derive_with_ledger_native_style() {
+        let wallet = test_wallet();
+        let deriver = Deriver::new(&wallet);
+        let addr = deriver
+            .derive_with_style(DerivationStyle::LedgerNative, 0)
+            .unwrap();
+
+        assert_eq!(addr.path, "m/44'/501'/0'");
+        assert!(addr.address.len() >= 32 && addr.address.len() <= 44);
+    }
+
+    #[test]
+    fn test_derive_with_ledger_live_style() {
+        let wallet = test_wallet();
+        let deriver = Deriver::new(&wallet);
+        let addr = deriver
+            .derive_with_style(DerivationStyle::LedgerLive, 0)
+            .unwrap();
+
+        assert_eq!(addr.path, "m/44'/501'/0'/0'/0'");
+        assert!(addr.address.len() >= 32 && addr.address.len() <= 44);
+    }
+
+    #[test]
+    fn test_different_styles_produce_different_addresses() {
+        let wallet = test_wallet();
+        let deriver = Deriver::new(&wallet);
+
+        let standard = deriver
+            .derive_with_style(DerivationStyle::Standard, 0)
+            .unwrap();
+        let ledger_native = deriver
+            .derive_with_style(DerivationStyle::LedgerNative, 0)
+            .unwrap();
+        let ledger_live = deriver
+            .derive_with_style(DerivationStyle::LedgerLive, 0)
+            .unwrap();
+        let legacy = deriver
+            .derive_with_style(DerivationStyle::Legacy, 0)
+            .unwrap();
+
+        // All styles should produce different addresses
+        assert_ne!(standard.address, ledger_native.address);
+        assert_ne!(standard.address, ledger_live.address);
+        assert_ne!(standard.address, legacy.address);
+        assert_ne!(ledger_native.address, ledger_live.address);
     }
 }

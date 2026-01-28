@@ -1,9 +1,43 @@
 //! Solana wallet CLI commands.
 
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 use colored::Colorize;
 use kobe_core::Wallet;
-use kobe_sol::{Deriver, StandardWallet};
+use kobe_sol::{DerivationStyle, Deriver, StandardWallet};
+
+/// CLI-compatible derivation style enum.
+///
+/// Maps to `kobe_sol::DerivationStyle` variants.
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum CliDerivationStyle {
+    /// Standard: m/44'/501'/{index}'/0' (Phantom, Backpack, Solflare)
+    #[default]
+    #[value(alias = "phantom", alias = "backpack")]
+    Standard,
+
+    /// Ledger Native: m/44'/501'/{index}' (Ledger, Trust Wallet, Keystone)
+    #[value(alias = "ledger", alias = "trust")]
+    LedgerNative,
+
+    /// Ledger Live: m/44'/501'/{index}'/0'/0'
+    LedgerLive,
+
+    /// Legacy: m/501'/{index}'/0/0 (deprecated, old Phantom/Sollet)
+    #[value(alias = "old")]
+    Legacy,
+}
+
+#[allow(deprecated)]
+impl From<CliDerivationStyle> for DerivationStyle {
+    fn from(style: CliDerivationStyle) -> Self {
+        match style {
+            CliDerivationStyle::Standard => DerivationStyle::Standard,
+            CliDerivationStyle::LedgerNative => DerivationStyle::LedgerNative,
+            CliDerivationStyle::LedgerLive => DerivationStyle::LedgerLive,
+            CliDerivationStyle::Legacy => DerivationStyle::Legacy,
+        }
+    }
+}
 
 /// Solana wallet operations.
 #[derive(Args)]
@@ -27,6 +61,10 @@ enum SolanaSubcommand {
         /// Number of accounts to derive.
         #[arg(short, long, default_value = "1")]
         count: u32,
+
+        /// Derivation path style for wallet compatibility.
+        #[arg(short, long, default_value = "standard")]
+        style: CliDerivationStyle,
     },
 
     /// Generate a random single-key wallet (no mnemonic).
@@ -45,6 +83,10 @@ enum SolanaSubcommand {
         /// Number of accounts to derive.
         #[arg(short, long, default_value = "1")]
         count: u32,
+
+        /// Derivation path style for wallet compatibility.
+        #[arg(short, long, default_value = "standard")]
+        style: CliDerivationStyle,
     },
 
     /// Import wallet from private key.
@@ -63,10 +105,11 @@ impl SolanaCommand {
                 words,
                 passphrase,
                 count,
+                style,
             } => {
                 let wallet = Wallet::generate(words, passphrase.as_deref())?;
                 let deriver = Deriver::new(&wallet);
-                print_wallet(&wallet, &deriver, count)?;
+                print_wallet(&wallet, &deriver, count, style.into())?;
             }
             SolanaSubcommand::Random => {
                 let wallet = StandardWallet::generate()?;
@@ -76,10 +119,11 @@ impl SolanaCommand {
                 mnemonic,
                 passphrase,
                 count,
+                style,
             } => {
                 let wallet = Wallet::from_mnemonic(&mnemonic, passphrase.as_deref())?;
                 let deriver = Deriver::new(&wallet);
-                print_wallet(&wallet, &deriver, count)?;
+                print_wallet(&wallet, &deriver, count, style.into())?;
             }
             SolanaSubcommand::ImportKey { key } => {
                 let key = key.strip_prefix("0x").unwrap_or(&key);
@@ -96,14 +140,16 @@ fn print_wallet(
     wallet: &Wallet,
     deriver: &Deriver,
     count: u32,
+    style: DerivationStyle,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let addresses = deriver.derive_many(0, count)?;
+    let addresses = deriver.derive_many_with_style(style, 0, count)?;
 
     println!();
     println!("      {}     {}", "Mnemonic".cyan().bold(), wallet.mnemonic());
     if wallet.has_passphrase() {
         println!("      {}   {}", "Passphrase".cyan().bold(), "(set)".dimmed());
     }
+    println!("      {}        {}", "Style".cyan().bold(), style.name().dimmed());
     println!();
 
     for (i, addr) in addresses.iter().enumerate() {

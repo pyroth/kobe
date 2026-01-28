@@ -3,7 +3,6 @@
 //! Implements SLIP-0010 for deriving Ed25519 keys from a seed.
 //! Reference: <https://github.com/satoshilabs/slips/blob/master/slip-0010.md>
 
-use alloc::string::String;
 use ed25519_dalek::SigningKey;
 use hmac::{Hmac, Mac};
 use sha2::Sha512;
@@ -71,32 +70,66 @@ impl DerivedKey {
         })
     }
 
-    /// Derive key at BIP44 path for Solana: m/44'/501'/account'/change'
+    /// Derive key at Standard path: m/44'/501'/index'/0'
     ///
-    /// Note: Solana uses all hardened derivation.
-    pub fn derive_solana_path(seed: &[u8], account: u32, change: u32) -> Result<Self, Error> {
+    /// This is the current industry standard used by Phantom, Backpack, etc.
+    pub fn derive_standard_path(seed: &[u8], index: u32) -> Result<Self, Error> {
         let master = Self::from_seed(seed)?;
 
-        // m/44'
-        let purpose = master.derive_hardened(44)?;
-        // m/44'/501'
-        let coin_type = purpose.derive_hardened(501)?;
-        // m/44'/501'/account'
-        let account_key = coin_type.derive_hardened(account)?;
-        // m/44'/501'/account'/change'
-        let change_key = account_key.derive_hardened(change)?;
+        // m/44'/501'/index'/0'
+        master
+            .derive_hardened(44)?
+            .derive_hardened(501)?
+            .derive_hardened(index)?
+            .derive_hardened(0)
+    }
 
-        Ok(change_key)
+    /// Derive key at Ledger Native path: m/44'/501'/index'
+    ///
+    /// Used by Ledger (native), Trust Wallet, Keystone.
+    pub fn derive_ledger_native_path(seed: &[u8], index: u32) -> Result<Self, Error> {
+        let master = Self::from_seed(seed)?;
+
+        // m/44'/501'/index'
+        master
+            .derive_hardened(44)?
+            .derive_hardened(501)?
+            .derive_hardened(index)
+    }
+
+    /// Derive key at Ledger Live path: m/44'/501'/index'/0'/0'
+    ///
+    /// Used by Ledger Live application.
+    pub fn derive_ledger_live_path(seed: &[u8], index: u32) -> Result<Self, Error> {
+        let master = Self::from_seed(seed)?;
+
+        // m/44'/501'/index'/0'/0'
+        master
+            .derive_hardened(44)?
+            .derive_hardened(501)?
+            .derive_hardened(index)?
+            .derive_hardened(0)?
+            .derive_hardened(0)
+    }
+
+    /// Derive key at Legacy path: m/501'/index'/0/0 (deprecated)
+    ///
+    /// Used by old Phantom/Sollet versions.
+    /// Note: Ed25519 requires hardened derivation, so final components are hardened.
+    pub fn derive_legacy_path(seed: &[u8], index: u32) -> Result<Self, Error> {
+        let master = Self::from_seed(seed)?;
+
+        // m/501'/index'/0'/0' (all hardened for Ed25519)
+        master
+            .derive_hardened(501)?
+            .derive_hardened(index)?
+            .derive_hardened(0)?
+            .derive_hardened(0)
     }
 
     /// Convert to Ed25519 signing key.
     pub fn to_signing_key(&self) -> SigningKey {
         SigningKey::from_bytes(&self.private_key)
-    }
-
-    /// Format the derivation path string.
-    pub fn format_path(account: u32, change: u32) -> String {
-        alloc::format!("m/44'/501'/{account}'/{change}'")
     }
 }
 
@@ -115,10 +148,30 @@ mod tests {
     }
 
     #[test]
-    fn test_solana_path_derivation() {
+    fn test_standard_path_derivation() {
         let seed = [0u8; 64];
-        let derived = DerivedKey::derive_solana_path(&seed, 0, 0).unwrap();
+        let derived = DerivedKey::derive_standard_path(&seed, 0).unwrap();
+        assert_eq!(derived.private_key.len(), 32);
+    }
 
+    #[test]
+    fn test_ledger_native_path_derivation() {
+        let seed = [0u8; 64];
+        let derived = DerivedKey::derive_ledger_native_path(&seed, 0).unwrap();
+        assert_eq!(derived.private_key.len(), 32);
+    }
+
+    #[test]
+    fn test_ledger_live_path_derivation() {
+        let seed = [0u8; 64];
+        let derived = DerivedKey::derive_ledger_live_path(&seed, 0).unwrap();
+        assert_eq!(derived.private_key.len(), 32);
+    }
+
+    #[test]
+    fn test_legacy_path_derivation() {
+        let seed = [0u8; 64];
+        let derived = DerivedKey::derive_legacy_path(&seed, 0).unwrap();
         assert_eq!(derived.private_key.len(), 32);
     }
 }
