@@ -6,7 +6,6 @@ use alloc::{format, string::ToString};
 #[cfg(feature = "alloc")]
 use crate::{Error, Network};
 use core::fmt;
-#[cfg(feature = "alloc")]
 use core::str::FromStr;
 
 /// Bitcoin address types.
@@ -52,6 +51,36 @@ impl AddressType {
 impl fmt::Display for AddressType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
+    }
+}
+
+/// Error returned when parsing an invalid address type string.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseAddressTypeError;
+
+impl fmt::Display for ParseAddressTypeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "invalid address type, expected: p2pkh, p2sh, p2wpkh, or p2tr"
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ParseAddressTypeError {}
+
+impl FromStr for AddressType {
+    type Err = ParseAddressTypeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "p2pkh" | "legacy" => Ok(Self::P2pkh),
+            "p2sh" | "p2sh-p2wpkh" | "segwit" | "nested-segwit" => Ok(Self::P2shP2wpkh),
+            "p2wpkh" | "native-segwit" | "bech32" => Ok(Self::P2wpkh),
+            "p2tr" | "taproot" | "bech32m" => Ok(Self::P2tr),
+            _ => Err(ParseAddressTypeError),
+        }
     }
 }
 
@@ -120,5 +149,59 @@ impl fmt::Display for DerivationPath {
 impl AsRef<bitcoin::bip32::DerivationPath> for DerivationPath {
     fn as_ref(&self) -> &bitcoin::bip32::DerivationPath {
         &self.inner
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_address_type_from_str() {
+        assert_eq!("p2pkh".parse::<AddressType>().unwrap(), AddressType::P2pkh);
+        assert_eq!("legacy".parse::<AddressType>().unwrap(), AddressType::P2pkh);
+        assert_eq!(
+            "p2sh".parse::<AddressType>().unwrap(),
+            AddressType::P2shP2wpkh
+        );
+        assert_eq!(
+            "segwit".parse::<AddressType>().unwrap(),
+            AddressType::P2shP2wpkh
+        );
+        assert_eq!(
+            "p2wpkh".parse::<AddressType>().unwrap(),
+            AddressType::P2wpkh
+        );
+        assert_eq!(
+            "native-segwit".parse::<AddressType>().unwrap(),
+            AddressType::P2wpkh
+        );
+        assert_eq!("p2tr".parse::<AddressType>().unwrap(), AddressType::P2tr);
+        assert_eq!("taproot".parse::<AddressType>().unwrap(), AddressType::P2tr);
+    }
+
+    #[test]
+    fn test_address_type_from_str_case_insensitive() {
+        assert_eq!("P2PKH".parse::<AddressType>().unwrap(), AddressType::P2pkh);
+        assert_eq!("TAPROOT".parse::<AddressType>().unwrap(), AddressType::P2tr);
+    }
+
+    #[test]
+    fn test_address_type_from_str_invalid() {
+        assert!("invalid".parse::<AddressType>().is_err());
+        assert!("".parse::<AddressType>().is_err());
+    }
+
+    #[test]
+    fn test_address_type_purpose() {
+        assert_eq!(AddressType::P2pkh.purpose(), 44);
+        assert_eq!(AddressType::P2shP2wpkh.purpose(), 49);
+        assert_eq!(AddressType::P2wpkh.purpose(), 84);
+        assert_eq!(AddressType::P2tr.purpose(), 86);
+    }
+
+    #[test]
+    fn test_address_type_default() {
+        assert_eq!(AddressType::default(), AddressType::P2wpkh);
     }
 }

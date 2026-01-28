@@ -1,6 +1,6 @@
 //! Derivation path styles for different wallet software.
 //!
-//! Different wallet software (MetaMask, Ledger, Trezor) use different BIP-44
+//! Different wallet software (`MetaMask`, Ledger, Trezor) use different BIP-44
 //! derivation paths. This module provides predefined styles for compatibility.
 
 use alloc::{format, string::String};
@@ -31,7 +31,7 @@ use core::str::FromStr;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum DerivationStyle {
-    /// Standard BIP-44 path used by MetaMask and Trezor.
+    /// Standard BIP-44 path used by `MetaMask` and Trezor.
     ///
     /// Path format: `m/44'/60'/0'/0/{index}`
     ///

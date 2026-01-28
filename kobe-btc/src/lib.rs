@@ -41,12 +41,12 @@ mod types;
 #[cfg(feature = "alloc")]
 pub use deriver::{DerivedAddress, Deriver};
 pub use error::Error;
-pub use network::Network;
+pub use network::{Network, ParseNetworkError};
 #[cfg(feature = "alloc")]
 pub use standard_wallet::StandardWallet;
-pub use types::AddressType;
 #[cfg(feature = "alloc")]
 pub use types::DerivationPath;
+pub use types::{AddressType, ParseAddressTypeError};
 
 /// A convenient Result type alias for kobe-btc operations.
 pub type Result<T> = core::result::Result<T, Error>;

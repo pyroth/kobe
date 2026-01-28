@@ -42,7 +42,7 @@ impl StandardWallet {
             .map_err(|e| Error::Derivation(alloc::format!("random generation failed: {e}")))?;
         let signing_key = SigningKey::from_bytes(&bytes);
         // Zeroize the temporary buffer
-        bytes.iter_mut().for_each(|b| *b = 0);
+        bytes.fill(0);
         Ok(Self { signing_key })
     }
 
@@ -59,8 +59,7 @@ impl StandardWallet {
     ///
     /// Returns an error if the hex is invalid or key length is wrong.
     pub fn from_private_key_hex(hex_key: &str) -> Result<Self, Error> {
-        let bytes = hex::decode(hex_key)
-            .map_err(|e| Error::Derivation(alloc::format!("invalid hex: {e}")))?;
+        let bytes = hex::decode(hex_key).map_err(|_| Error::InvalidHex)?;
 
         if bytes.len() != 32 {
             return Err(Error::Derivation(alloc::format!(
