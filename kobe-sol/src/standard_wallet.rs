@@ -46,19 +46,19 @@ impl StandardWallet {
         Ok(Self { signing_key })
     }
 
-    /// Create a wallet from a raw 32-byte private key.
+    /// Create a wallet from raw 32-byte secret key.
     #[must_use]
-    pub fn from_private_key(private_key: &[u8; 32]) -> Self {
-        let signing_key = SigningKey::from_bytes(private_key);
+    pub fn from_bytes(bytes: &[u8; 32]) -> Self {
+        let signing_key = SigningKey::from_bytes(bytes);
         Self { signing_key }
     }
 
-    /// Create a wallet from a hex-encoded private key.
+    /// Create a wallet from a hex-encoded secret key.
     ///
     /// # Errors
     ///
     /// Returns an error if the hex is invalid or key length is wrong.
-    pub fn from_private_key_hex(hex_key: &str) -> Result<Self, Error> {
+    pub fn from_hex(hex_key: &str) -> Result<Self, Error> {
         let bytes = hex::decode(hex_key).map_err(|_| Error::InvalidHex)?;
 
         if bytes.len() != 32 {
@@ -70,28 +70,35 @@ impl StandardWallet {
 
         let mut key_bytes = [0u8; 32];
         key_bytes.copy_from_slice(&bytes);
-        Ok(Self::from_private_key(&key_bytes))
+        Ok(Self::from_bytes(&key_bytes))
     }
 
     /// Get the Solana address as Base58 encoded string.
     #[inline]
     #[must_use]
-    pub fn address_string(&self) -> String {
+    pub fn address(&self) -> String {
         let verifying_key: VerifyingKey = self.signing_key.verifying_key();
         bs58::encode(verifying_key.as_bytes()).into_string()
     }
 
-    /// Get the private key in hex format (zeroized on drop).
+    /// Get the secret key as raw bytes (zeroized on drop).
     #[inline]
     #[must_use]
-    pub fn private_key_hex(&self) -> Zeroizing<String> {
+    pub fn secret_bytes(&self) -> Zeroizing<[u8; 32]> {
+        Zeroizing::new(*self.signing_key.as_bytes())
+    }
+
+    /// Get the secret key in hex format (zeroized on drop).
+    #[inline]
+    #[must_use]
+    pub fn secret_hex(&self) -> Zeroizing<String> {
         Zeroizing::new(hex::encode(self.signing_key.as_bytes()))
     }
 
     /// Get the public key in hex format.
     #[inline]
     #[must_use]
-    pub fn public_key_hex(&self) -> String {
+    pub fn pubkey_hex(&self) -> String {
         let verifying_key: VerifyingKey = self.signing_key.verifying_key();
         hex::encode(verifying_key.as_bytes())
     }
@@ -105,26 +112,26 @@ mod tests {
     #[test]
     fn test_generate() {
         let wallet = StandardWallet::generate().unwrap();
-        let address = wallet.address_string();
+        let address = wallet.address();
 
         // Solana addresses are 32-44 characters in Base58
         assert!(address.len() >= 32 && address.len() <= 44);
     }
 
     #[test]
-    fn test_from_private_key() {
+    fn test_from_bytes() {
         let key = [1u8; 32];
-        let wallet = StandardWallet::from_private_key(&key);
-        let address = wallet.address_string();
+        let wallet = StandardWallet::from_bytes(&key);
+        let address = wallet.address();
 
         assert!(address.len() >= 32 && address.len() <= 44);
     }
 
     #[test]
-    fn test_from_private_key_hex() {
+    fn test_from_hex() {
         let hex_key = "0101010101010101010101010101010101010101010101010101010101010101";
-        let wallet = StandardWallet::from_private_key_hex(hex_key).unwrap();
-        let address = wallet.address_string();
+        let wallet = StandardWallet::from_hex(hex_key).unwrap();
+        let address = wallet.address();
 
         assert!(address.len() >= 32 && address.len() <= 44);
     }
@@ -132,9 +139,9 @@ mod tests {
     #[test]
     fn test_deterministic() {
         let key = [42u8; 32];
-        let wallet1 = StandardWallet::from_private_key(&key);
-        let wallet2 = StandardWallet::from_private_key(&key);
+        let wallet1 = StandardWallet::from_bytes(&key);
+        let wallet2 = StandardWallet::from_bytes(&key);
 
-        assert_eq!(wallet1.address_string(), wallet2.address_string());
+        assert_eq!(wallet1.address(), wallet2.address());
     }
 }

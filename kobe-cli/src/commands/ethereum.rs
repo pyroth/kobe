@@ -116,7 +116,7 @@ impl EthereumCommand {
                 print_wallet(&wallet, &deriver, count, style.into())?;
             }
             EthereumSubcommand::ImportKey { key } => {
-                let wallet = StandardWallet::from_private_key_hex(&key)?;
+                let wallet = StandardWallet::from_hex(&key)?;
                 print_standard_wallet(&wallet);
             }
         }
@@ -160,8 +160,8 @@ fn print_wallet(
 #[rustfmt::skip]
 fn print_standard_wallet(wallet: &StandardWallet) {
     println!();
-    println!("      {}      {}", "Address".cyan().bold(), wallet.address_string().green());
-    println!("      {}  0x{}", "Private Key".cyan().bold(), wallet.private_key_hex().as_str());
-    println!("      {}   0x{}", "Public Key".cyan().bold(), wallet.public_key_hex().dimmed());
+    println!("      {}      {}", "Address".cyan().bold(), wallet.address().green());
+    println!("      {}  0x{}", "Private Key".cyan().bold(), wallet.secret_hex().as_str());
+    println!("      {}   0x{}", "Public Key".cyan().bold(), wallet.pubkey_hex().dimmed());
     println!();
 }

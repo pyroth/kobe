@@ -127,7 +127,7 @@ impl SolanaCommand {
             }
             SolanaSubcommand::ImportKey { key } => {
                 let key = key.strip_prefix("0x").unwrap_or(&key);
-                let wallet = StandardWallet::from_private_key_hex(key)?;
+                let wallet = StandardWallet::from_hex(key)?;
                 print_standard_wallet(&wallet);
             }
         }
@@ -171,8 +171,8 @@ fn print_wallet(
 #[rustfmt::skip]
 fn print_standard_wallet(wallet: &StandardWallet) {
     println!();
-    println!("      {}      {}", "Address".cyan().bold(), wallet.address_string().green());
-    println!("      {}  {}", "Private Key".cyan().bold(), wallet.private_key_hex().as_str());
-    println!("      {}   {}", "Public Key".cyan().bold(), wallet.public_key_hex().dimmed());
+    println!("      {}      {}", "Address".cyan().bold(), wallet.address().green());
+    println!("      {}  {}", "Private Key".cyan().bold(), wallet.secret_hex().as_str());
+    println!("      {}   {}", "Public Key".cyan().bold(), wallet.pubkey_hex().dimmed());
     println!();
 }

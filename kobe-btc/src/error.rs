@@ -56,7 +56,10 @@ impl std::error::Error for Error {
             Self::Mnemonic(e) => Some(e),
             Self::Bip32(e) => Some(e),
             Self::Secp256k1(e) => Some(e),
-            Self::InvalidWordCount(_) | Self::InvalidWif | Self::InvalidHex | Self::InvalidPrivateKey => None,
+            Self::InvalidWordCount(_)
+            | Self::InvalidWif
+            | Self::InvalidHex
+            | Self::InvalidPrivateKey => None,
             #[cfg(feature = "alloc")]
             Self::InvalidDerivationPath(_) => None,
         }

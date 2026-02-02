@@ -57,13 +57,13 @@ impl StandardWallet {
         })
     }
 
-    /// Create a wallet from a raw 32-byte private key.
+    /// Create a wallet from raw 32-byte secret key.
     ///
     /// # Errors
     ///
-    /// Returns an error if the private key is invalid.
-    pub fn from_private_key(private_key: &[u8; 32]) -> Result<Self, Error> {
-        let private_key = SigningKey::from_slice(private_key).map_err(|_| Error::InvalidPrivateKey)?;
+    /// Returns an error if the secret key is invalid.
+    pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self, Error> {
+        let private_key = SigningKey::from_slice(bytes).map_err(|_| Error::InvalidPrivateKey)?;
         let address = Self::derive_address(&private_key);
 
         Ok(Self {
@@ -72,12 +72,12 @@ impl StandardWallet {
         })
     }
 
-    /// Import a wallet from a private key hex string.
+    /// Import a wallet from a hex-encoded secret key.
     ///
     /// # Errors
     ///
-    /// Returns an error if the hex string is invalid or the private key is invalid.
-    pub fn from_private_key_hex(hex_str: &str) -> Result<Self, Error> {
+    /// Returns an error if the hex string is invalid or the secret key is invalid.
+    pub fn from_hex(hex_str: &str) -> Result<Self, Error> {
         let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
         let bytes = hex::decode(hex_str).map_err(|_| Error::InvalidHex)?;
 
@@ -97,32 +97,33 @@ impl StandardWallet {
         public_key_to_address(public_key_bytes.as_bytes())
     }
 
-    /// Get the private key in hex format without 0x prefix (zeroized on drop).
+    /// Get the secret key as raw bytes (zeroized on drop).
     #[inline]
     #[must_use]
-    pub fn private_key_hex(&self) -> Zeroizing<String> {
+    pub fn secret_bytes(&self) -> Zeroizing<[u8; 32]> {
+        Zeroizing::new(self.private_key.to_bytes().into())
+    }
+
+    /// Get the secret key in hex format without 0x prefix (zeroized on drop).
+    #[inline]
+    #[must_use]
+    pub fn secret_hex(&self) -> Zeroizing<String> {
         Zeroizing::new(hex::encode(self.private_key.to_bytes()))
     }
 
     /// Get the public key in uncompressed hex format without 0x prefix.
     #[inline]
     #[must_use]
-    pub fn public_key_hex(&self) -> String {
+    pub fn pubkey_hex(&self) -> String {
         let public_key = self.private_key.verifying_key();
         let bytes = public_key.to_encoded_point(false);
         hex::encode(bytes.as_bytes())
     }
 
-    /// Get the Ethereum address.
-    #[must_use]
-    pub const fn address(&self) -> &Address {
-        &self.address
-    }
-
-    /// Get the checksummed address string.
+    /// Get the checksummed Ethereum address string.
     #[inline]
     #[must_use]
-    pub fn address_string(&self) -> String {
+    pub fn address(&self) -> String {
         to_checksum_address(&self.address)
     }
 }
@@ -135,28 +136,38 @@ mod tests {
     #[test]
     fn test_generate() {
         let wallet = StandardWallet::generate().unwrap();
-        assert!(wallet.address_string().starts_with("0x"));
-        assert_eq!(wallet.address_string().len(), 42);
+        assert!(wallet.address().starts_with("0x"));
+        assert_eq!(wallet.address().len(), 42);
     }
 
     #[cfg(feature = "rand")]
     #[test]
-    fn test_from_private_key() {
+    fn test_from_hex() {
         let wallet = StandardWallet::generate().unwrap();
-        let pk_hex = wallet.private_key_hex();
+        let hex = wallet.secret_hex();
 
-        let imported = StandardWallet::from_private_key_hex(&pk_hex).unwrap();
-        assert_eq!(wallet.address_string(), imported.address_string());
+        let imported = StandardWallet::from_hex(&hex).unwrap();
+        assert_eq!(wallet.address(), imported.address());
     }
 
     #[cfg(feature = "rand")]
     #[test]
-    fn test_from_private_key_with_prefix() {
+    fn test_from_hex_with_prefix() {
         use alloc::format;
         let wallet = StandardWallet::generate().unwrap();
-        let pk_hex = format!("0x{}", wallet.private_key_hex().as_str());
+        let hex = format!("0x{}", wallet.secret_hex().as_str());
 
-        let imported = StandardWallet::from_private_key_hex(&pk_hex).unwrap();
-        assert_eq!(wallet.address_string(), imported.address_string());
+        let imported = StandardWallet::from_hex(&hex).unwrap();
+        assert_eq!(wallet.address(), imported.address());
+    }
+
+    #[cfg(feature = "rand")]
+    #[test]
+    fn test_from_bytes() {
+        let wallet = StandardWallet::generate().unwrap();
+        let bytes = wallet.secret_bytes();
+
+        let imported = StandardWallet::from_bytes(&bytes).unwrap();
+        assert_eq!(wallet.address(), imported.address());
     }
 }

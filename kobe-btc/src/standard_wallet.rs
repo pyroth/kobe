@@ -109,7 +109,7 @@ impl StandardWallet {
         })
     }
 
-    /// Import a wallet from a hex-encoded private key.
+    /// Import a wallet from a hex-encoded secret key.
     ///
     /// # Errors
     ///
@@ -119,7 +119,7 @@ impl StandardWallet {
     ///
     /// This function will not panic under normal circumstances.
     /// The internal `expect` is guaranteed to succeed for valid private keys.
-    pub fn from_private_key_hex(
+    pub fn from_hex(
         hex_str: &str,
         network: Network,
         address_type: AddressType,
@@ -151,37 +151,38 @@ impl StandardWallet {
         })
     }
 
-    /// Get the private key in hex format (zeroized on drop).
+    /// Get the secret key as raw bytes (zeroized on drop).
     #[inline]
     #[must_use]
-    pub fn private_key_hex(&self) -> Zeroizing<String> {
+    pub fn secret_bytes(&self) -> Zeroizing<[u8; 32]> {
+        Zeroizing::new(self.private_key.inner.secret_bytes())
+    }
+
+    /// Get the secret key in hex format (zeroized on drop).
+    #[inline]
+    #[must_use]
+    pub fn secret_hex(&self) -> Zeroizing<String> {
         Zeroizing::new(hex::encode(self.private_key.inner.secret_bytes()))
     }
 
-    /// Get the private key in WIF format (zeroized on drop).
+    /// Get the secret key in WIF format (zeroized on drop).
     #[inline]
     #[must_use]
-    pub fn private_key_wif(&self) -> Zeroizing<String> {
+    pub fn to_wif(&self) -> Zeroizing<String> {
         Zeroizing::new(self.private_key.to_wif())
     }
 
     /// Get the public key in compressed hex format.
     #[inline]
     #[must_use]
-    pub fn public_key_hex(&self) -> String {
+    pub fn pubkey_hex(&self) -> String {
         self.public_key.to_string()
     }
 
-    /// Get the Bitcoin address.
-    #[must_use]
-    pub const fn address(&self) -> &Address {
-        &self.address
-    }
-
-    /// Get the address as a string.
+    /// Get the Bitcoin address as a string.
     #[inline]
     #[must_use]
-    pub fn address_string(&self) -> String {
+    pub fn address(&self) -> String {
         self.address.to_string()
     }
 
@@ -206,7 +207,7 @@ mod tests {
     #[test]
     fn test_generate_mainnet_p2wpkh() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2wpkh).unwrap();
-        assert!(wallet.address_string().starts_with("bc1q"));
+        assert!(wallet.address().starts_with("bc1q"));
         assert_eq!(wallet.network(), Network::Mainnet);
     }
 
@@ -214,27 +215,27 @@ mod tests {
     #[test]
     fn test_generate_mainnet_p2pkh() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2pkh).unwrap();
-        assert!(wallet.address_string().starts_with('1'));
+        assert!(wallet.address().starts_with('1'));
     }
 
     #[cfg(feature = "rand")]
     #[test]
     fn test_generate_mainnet_p2sh() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2shP2wpkh).unwrap();
-        assert!(wallet.address_string().starts_with('3'));
+        assert!(wallet.address().starts_with('3'));
     }
 
     #[cfg(feature = "rand")]
     #[test]
     fn test_generate_mainnet_p2tr() {
         let wallet = StandardWallet::generate(Network::Mainnet, AddressType::P2tr).unwrap();
-        assert!(wallet.address_string().starts_with("bc1p"));
+        assert!(wallet.address().starts_with("bc1p"));
     }
 
     #[cfg(feature = "rand")]
     #[test]
     fn test_generate_testnet() {
         let wallet = StandardWallet::generate(Network::Testnet, AddressType::P2wpkh).unwrap();
-        assert!(wallet.address_string().starts_with("tb1q"));
+        assert!(wallet.address().starts_with("tb1q"));
     }
 }

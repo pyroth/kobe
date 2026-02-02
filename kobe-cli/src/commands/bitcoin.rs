@@ -215,8 +215,8 @@ fn print_standard_wallet(wallet: &StandardWallet) {
     println!();
     println!("      {}      {}", "Network".cyan().bold(), network_str);
     println!("      {} {}", "Address Type".cyan().bold(), wallet.address_type().name());
-    println!("      {}      {}", "Address".cyan().bold(), wallet.address_string().green());
-    println!("      {}  {}", "Private Key".cyan().bold(), wallet.private_key_wif().as_str());
-    println!("      {}   {}", "Public Key".cyan().bold(), wallet.public_key_hex().dimmed());
+    println!("      {}      {}", "Address".cyan().bold(), wallet.address().green());
+    println!("      {}  {}", "Private Key".cyan().bold(), wallet.to_wif().as_str());
+    println!("      {}   {}", "Public Key".cyan().bold(), wallet.pubkey_hex().dimmed());
     println!();
 }
