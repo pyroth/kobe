@@ -8,7 +8,7 @@ A minimal cryptocurrency wallet toolkit for Bitcoin, Ethereum, and Solana. Suppo
 ## Install
 
 ```bash
-cargo install kobe
+cargo install kobe-cli
 ```
 
 ## License
