@@ -2,10 +2,10 @@
 name = "kobe-cli"
 version.workspace = true
 edition.workspace = true
-description = "A multi-chain cryptocurrency wallet CLI tool"
 license.workspace = true
-readme = "../README.md"
 repository.workspace = true
+readme = "../README.md"
+description = "A multi-chain cryptocurrency wallet CLI tool"
 keywords = ["crypto", "wallet", "bitcoin", "ethereum", "cli"]
 categories = ["command-line-utilities", "cryptography"]
 

@@ -10,7 +10,7 @@
 //!
 //! # Usage
 //!
-//! ```
+//! ```rust
 //! use kobe::Wallet;
 //! use kobe_sol::Deriver;
 //!

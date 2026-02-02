@@ -127,7 +127,7 @@ impl EthereumCommand {
 #[rustfmt::skip]
 fn print_wallet(
     wallet: &Wallet,
-    deriver: &Deriver,
+    deriver: &Deriver<'_>,
     count: u32,
     style: DerivationStyle,
 ) -> Result<(), Box<dyn std::error::Error>> {

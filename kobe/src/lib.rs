@@ -10,14 +10,20 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```rust
 //! use kobe::Wallet;
 //!
-//! // Generate a new wallet (requires std or alloc feature with RNG)
-//! let wallet = Wallet::generate(12, None).unwrap();
+//! // Create a wallet from an existing mnemonic
+//! let wallet = Wallet::from_mnemonic(
+//!     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+//!     None
+//! ).unwrap();
 //!
 //! // Or with a passphrase (BIP39 optional password)
-//! let wallet = Wallet::generate(12, Some("my secret passphrase")).unwrap();
+//! let wallet = Wallet::from_mnemonic(
+//!     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+//!     Some("my secret passphrase")
+//! ).unwrap();
 //!
 //! // The same mnemonic can derive addresses for any coin
 //! let seed = wallet.seed();

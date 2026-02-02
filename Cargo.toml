@@ -4,7 +4,7 @@ default-members = ["kobe"]
 resolver = "3"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pyroth/kobe"
@@ -40,35 +40,70 @@ panic = "abort"
 strip = true
 
 [profile.dev]
-# Faster compile times for development
 opt-level = 0
 debug = true
 
 [profile.test]
-# Enable optimizations for faster test execution
 opt-level = 2
 
+[profile.ci]
+inherits = "dev"
+debug = false
+
+[profile.bench]
+inherits = "release"
+debug = true
+
 [workspace.lints.rust]
-# Safety and correctness
 unsafe_code = "warn"
 missing_docs = "warn"
 rust_2024_compatibility = { level = "warn", priority = -1 }
+elided_lifetimes_in_paths = "warn"
+missing_debug_implementations = "warn"
+missing_copy_implementations = "warn"
+single_use_lifetimes = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+variant_size_differences = "warn"
 
 [workspace.lints.clippy]
-# Correctness
 correctness = { level = "deny", priority = -1 }
-# Suspicious code
 suspicious = { level = "warn", priority = -1 }
-# Code complexity
 complexity = { level = "warn", priority = -1 }
-# Performance
 perf = { level = "warn", priority = -1 }
-# Style
 style = { level = "warn", priority = -1 }
-# Pedantic (more strict)
 pedantic = { level = "warn", priority = -1 }
-# Allow some pedantic lints that are too noisy
-missing_errors_doc = "allow"
-missing_panics_doc = "allow"
-module_name_repetitions = "allow"
-must_use_candidate = "allow"
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+clone_on_ref_ptr = "warn"        
+exhaustive_enums = "warn"        
+exhaustive_structs = "warn"      
+missing_docs_in_private_items = "warn"  
+unwrap_in_result = "warn"        
+shadow_reuse = "warn"            
+shadow_same = "warn"
+shadow_unrelated = "warn"
+missing_errors_doc = "allow"       
+missing_panics_doc = "allow"       
+module_name_repetitions = "allow"  
+must_use_candidate = "allow"       
+doc_markdown = "allow"             
+similar_names = "allow"            
+too_many_lines = "allow"           
+struct_excessive_bools = "allow"   
+fn_params_excessive_bools = "allow"
+implicit_hasher = "allow"          
+option_if_let_else = "allow"       
+significant_drop_tightening = "allow"
+multiple_crate_versions = "allow"
+future_not_send = "allow"

@@ -137,7 +137,7 @@ impl FromStr for DerivationStyle {
 
 /// Error returned when parsing an invalid derivation style string.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseDerivationStyleError(String);
+pub struct ParseDerivationStyleError(pub(crate) String);
 
 impl fmt::Display for ParseDerivationStyleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

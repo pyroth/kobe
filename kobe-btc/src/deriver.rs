@@ -246,7 +246,7 @@ mod tests {
         assert_eq!(addrs.len(), 5);
 
         // All addresses should be unique
-        let mut seen = alloc::vec::Vec::new();
+        let mut seen = Vec::new();
         for addr in &addrs {
             assert!(!seen.contains(&addr.address));
             seen.push(addr.address.clone());

@@ -55,7 +55,7 @@ impl fmt::Display for AddressType {
 }
 
 /// Error returned when parsing an invalid address type string.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParseAddressTypeError;
 
 impl fmt::Display for ParseAddressTypeError {

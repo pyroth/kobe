@@ -170,7 +170,7 @@ impl BitcoinCommand {
 #[rustfmt::skip]
 fn print_wallet(
     wallet: &Wallet,
-    deriver: &Deriver,
+    deriver: &Deriver<'_>,
     address_type: AddressType,
     count: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
